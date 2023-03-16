@@ -1,0 +1,112 @@
+---
+title: "The gDNAx package"
+author:
+- name: Beatriz Calvo-Serra
+  affiliation:
+  - &id Dept. of Medicine and Life Sciences, Universitat Pompeu Fabra, Barcelona, Spain
+  email: beatriz.calvo@upf.edu
+- name: Robert Castelo
+  affiliation: *id
+  email: robert.castelo@upf.edu
+package: "`r pkg_ver('gDNAx')`"
+abstract: >
+  The `gDNAx` package provides functionality to diagnose the presence of genomic DNA (gDNA) contamination in RNA-seq data sets, and filter out reads of potential gDNA origin.
+vignette: >
+  %\VignetteIndexEntry{The gDNAx package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+bibliography: bibliography.bib
+---
+
+```{r setup, echo=FALSE}
+library(knitr)
+
+options(width=80)
+
+knitr::opts_chunk$set(
+    collapse=TRUE,
+    comment="")
+```
+
+# What is genomic DNA contamination in a RNA-seq experiment
+
+Genomic DNA contamination is ...
+
+# Diagnose the presence of gDNA contamination
+
+Here we illustrate the use of the package with a subset of the
+data in [@li2022genes].
+
+```{r, message=FALSE}
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(gDNAx)
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+path <- "/projects_fg/gDNA/LiYu22/Subset" ## to change later
+pdat <- read.csv(file.path(path, "phenodata.csv"), row.names=1)
+pdat
+bams <- list.files(path, pattern="*.bam$", full.names=TRUE)
+gdnax <- gDNAdx(bams, txdb, singleEnd=FALSE, strandMode=2L)
+gdnax
+```
+
+Get statistics on the origin of alignments.
+
+```{r}
+dx <- getDx(gdnax)
+dx
+```
+
+Plot gDNA diagnostics. First the default..
+
+```{r defdiag, height=10, width=10, out.width="800px", fig.cap="Default diagnostics."}
+plot(gdnax, group=pdat$gDNA)
+```
+
+The origin of alignments per sample.
+
+```{r alnorigins, height=4, width=8, out.width="800px", fig.cap="Alignment origins."}
+plotAlnOrigins(gdnax, group=pdat$gDNA)
+```
+
+The estimated fragments length distributions.
+
+```{r frglen, height=4, width=8, out.width="800px", fig.cap="Estimated fragments length distributions."}
+plotFrgLength(gdnax)
+```
+
+# Filter alignments according to an annotation
+
+We can filter splice-compatible alignments and write them into
+new BAM files as follows.
+
+```{r, eval=FALSE}
+fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+                       isSpliceCompatibleExonic=TRUE)
+fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
+list.files(".", pattern="*.bam$")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+                       isSpliceCompatibleExonic=TRUE)
+tmpdir <- tempdir()
+fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
+list.files(tmpdir, pattern="*.bam$")
+```
+```{r}
+fstats
+```
+
+# Session information
+
+```{r session_info, cache=FALSE}
+sessionInfo()
+```
+
+# References

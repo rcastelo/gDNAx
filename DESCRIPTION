@@ -1,0 +1,43 @@
+Package: gDNAx
+Type: Package
+Title: Diagnostics for assessing genomic DNA contamination in RNA-seq data
+Version: 0.99.0
+Authors@R: c(
+  person("Beatriz", "Calvo-Serra", email = "beatriz.calvo@upf.edu", role = c("aut","cre")),
+  person("Robert", "Castelo", email = "robert.castelo@upf.edu", role = c("aut")))
+Description: Provide diagnostics for assessing genomic DNA contamination in
+    RNA-seq data.
+License: Artistic-2.0
+Encoding: UTF-8
+Depends:
+    R (>= 4.1)
+Imports: 
+    methods,
+    BiocGenerics,
+    BiocParallel,
+    Biostrings,
+    S4Vectors,
+    IRanges,
+    GenomeInfoDb,
+    GenomicRanges,
+    GenomicFiles,
+    GenomicAlignments,
+    GenomicFeatures,
+    Rsamtools,
+    AnnotationHub,
+    RColorBrewer
+Suggests:
+    BiocStyle,
+    knitr,
+    rmarkdown,
+    RUnit,
+    TxDb.Hsapiens.UCSC.hg38.knownGene
+biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics
+VignetteBuilder: knitr
+RoxygenNote: 7.2.3
+Collate:
+    'AllGenerics.R'
+    'AllClasses.R'
+    'dx.R'
+    'filterBAMtx.R'
+    'utils.R'
