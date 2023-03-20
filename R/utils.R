@@ -4,8 +4,10 @@
 #' @importFrom methods is
 #' @importFrom Rsamtools BamFileList asMates asMates<-
 .checkBamFileListArgs <- function(bfl, singleEnd, fragments, yieldSize) {
-    if (missing(bfl) || !class(bfl) %in% c("character", "BamFileList"))
-        stop("argument 'bfl' should be either a string character vector of BAM file names or a 'BamFileList' object")
+    if (missing(bfl) || length(bfl) == 0 ||
+        !class(bfl) %in% c("character", "BamFileList"))
+        stop(paste("argument 'bfl' should be either a string character vector",
+                   "of BAM file names or a 'BamFileList' object", sep=" ")
     
     if (is.character(bfl)) {
         mask <- vapply(bfl, FUN = file.exists, FUN.VALUE = logical(1))
@@ -85,6 +87,7 @@
 #' @importFrom Rsamtools yieldSize yieldSize<- scanBam
 #' @importFrom S4Vectors unname
 .minFrgLen <- function(bfl, singleEnd) {
+    stopifnot(length(bfl) > 0) ## QC
     rlen <- rep(0L, length(bfl))
     peflag <- .allPairedEnd(bfl, singleEnd)
     qw <- function(bf) {
