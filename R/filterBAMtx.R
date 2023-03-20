@@ -137,6 +137,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 #' @importFrom Rsamtools bamWhat bamTag
 #' @importFrom S4Vectors DataFrame mcols<-
+#' @importFrom GenomeInfoDb seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc
 .bamtx_filter <- function(x) {
     n <- 5 ## this number is derived from the fact that .scj_filter()

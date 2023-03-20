@@ -20,7 +20,7 @@ gDNAdx(
 
 \S4method{plot}{gDNAx,ANY}(x, group = 1L, labelpoints = FALSE, ...)
 
-plotAlnOrigins(x, group = NULL)
+plotAlnOrigins(x, group = 1L)
 
 plotFrgLength(x)
 }
