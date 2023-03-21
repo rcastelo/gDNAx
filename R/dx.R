@@ -363,8 +363,12 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     ## project them into genomic coordinates
     suppressMessages(ah <- AnnotationHub())
     suppressMessages(ahres <- query(ah, c("UCSCRepeatMasker", genome(txdb)[1])))
-    stopifnot(length(ahres) == 1) ## QC
-    suppressMessages(rmskdb <- ahres[[1]])
+    mt <- gregexpr(pattern=" \\([A-Za-z0-9]+\\) ", ahres$title)
+    ahresdates <- substr(ahres$title, unlist(mt)+2,
+                         unlist(mt)+sapply(mt, attr, "match.length")-3)
+    ahresdates <- as.Date(paste0("1", ahresdates), "%d%b%Y")
+    ## in case > 1 RM annotations available, pick the most recent one
+    suppressMessages(rmskdb <- ahres[[which.max(ahresdates)]])
     names(rmskdb) <- mcols(rmskdb) <- NULL
     ## strand(rmskdb) <- "*"
     if (stdChrom)
