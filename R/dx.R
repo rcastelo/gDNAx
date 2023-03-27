@@ -126,10 +126,12 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     intfrglen.mean <- sapply(dxBAMs, function(x) mean(x$intfrglen))
     scjfrglen.mean <- sapply(dxBAMs, function(x) mean(x$scjfrglen))
     scefrglen.mean <- sapply(dxBAMs, function(x) mean(x$scefrglen))
+    strness <- sapply(dxBAMs, function(x) x$strness)
     dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct,
                      SCC=sccpct,
                      IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
                      SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
+                     STRAND=strness,
                      row.names=gsub(".bam", "", names(igcpct)))
     igcfrglen <- lapply(dxBAMs, function(x) x$igcfrglen)
     intfrglen <- lapply(dxBAMs, function(x) x$intfrglen)
@@ -209,10 +211,14 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
         scjfrglen <- scoaln$scjfrglen
         scefrglen <- scoaln$scefrglen
     }
+    
+    ## strandedness
+    strness <- .getStrandedness(gal, tx, reportAll=FALSE)
 
     return(list(naln=naln, nigcaln=nigcaln, nintaln=nintaln, nscjaln=nscjaln,
                 nscealn=nscealn, nsccaln=nsccaln, igcfrglen=igcfrglen,
-                intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen))
+                intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen,
+                strness=strness))
 }
 
 ## private function .igcAlignments() to find intergenic alignments
@@ -409,6 +415,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     list(igcrng=igcrng, intrng=pintrons)
 }
 
+
 #' Plot diagnostics
 #'
 #' Plot diagnostics calculated with gDNAdx()
@@ -472,7 +479,17 @@ function(x, group=1L, labelpoints=FALSE, ...) {
              bg="white")
     xrng <- range(dx$SCJ)
     yrng <- range(dx$SCE)
-    ## STRANDNESS
+    ## STRANDEDNESS
+    plot(dx$IGC, dx$STRAND, pch=19, panel.first=grid(), las=1,
+         xlab="Intergenic alignments (%)",
+         ylab="Strandedness", col=grpcol[as.integer(group)])
+    if (labelpoints) {
+      pos <- setNames(thigmophobe(dx$IGC, dx$STRAND), rownames(x))
+      text(dx$IGC, dx$STRAND, as.character(1:nrow(dx)), cex=0.5, pos=pos)
+    }
+    if (is.factor(group))
+      legend("topright", levels(group), col=grpcol, pch=19, inset=0.01,
+             bg="white")
 
 })
 
@@ -595,3 +612,4 @@ plotFrgLength <- function(x) {
     ticks <- seq(yrng[1], yrng[2], by=1)
     axis(2, at=ticks, labels=parse(text=paste0("10^", ticks)), las=1)
 }
+

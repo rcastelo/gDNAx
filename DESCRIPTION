@@ -1,7 +1,7 @@
 Package: gDNAx
 Type: Package
 Title: Diagnostics for assessing genomic DNA contamination in RNA-seq data
-Version: 0.99.0
+Version: 0.99.1
 Authors@R: c(
   person("Beatriz", "Calvo-Serra", email = "beatriz.calvo@upf.edu", role = c("aut","cre")),
   person("Robert", "Castelo", email = "robert.castelo@upf.edu", role = c("aut")))
@@ -25,7 +25,10 @@ Imports:
     GenomicFeatures,
     Rsamtools,
     AnnotationHub,
-    RColorBrewer
+    RColorBrewer,
+    AnnotationDbi,
+    bitops,
+    plotrix
 Suggests:
     BiocStyle,
     knitr,
@@ -41,3 +44,4 @@ Collate:
     'dx.R'
     'filterBAMtx.R'
     'utils.R'
+    'strandedness.R'
