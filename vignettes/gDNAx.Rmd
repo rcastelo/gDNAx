@@ -35,46 +35,148 @@ knitr::opts_chunk$set(
 
 # What is genomic DNA contamination in a RNA-seq experiment
 
-Genomic DNA contamination is ...
+Genomic DNA (gDNA) contamination is an internal contaminant that can be 
+present in gene quantification techniques, such as in an RNA-sequencing 
+(RNA-seq) experiment. This
+contamination can be due to an absent or inefficient gDNA digestion step
+(with DNase) during the extraction of total RNA in the library
+preparation process. In fact, some protocols do not include a DNase treatment
+step, or they include it as optional.
+
+While gDNA contamination is not a major issue for poly(A) RNA-seq, it can
+remarkably affect gene expression quantification of total RNA-seq experiments.
+Moreover, gDNA contamination can lead to a misleading attribution of 
+expression to unannotated regions of the genome. For this reason, it is
+important to check the level of gDNA contamination in the quality control 
+analysis before performing further analyses, specially when total RNA has
+been sequenced.
 
 # Diagnose the presence of gDNA contamination
 
-Here we illustrate the use of the package with a subset of the
-data in [@li2022genes].
+Here we illustrate the use of the `gDNAx` package for calculating different
+diagnostics related to gDNA contamination levels.
+
+To do so, a subset of the data in [@li2022genes] is used. This data consists
+in 9 paired-end samples of total RNA-seq with increasing levels of gDNA
+contamination: three contamination levels (0, 1 and 10) with 3 replicates each.
+
+```{r, message=FALSE}
+path <- "/projects_fg/gDNA/LiYu22/Subset" ## to change later
+pdat <- read.csv(file.path(path, "phenodata.csv"), row.names=1)
+pdat
+```
+
+
+## Identifying `strandMode`
+
+The `strandMode` of a sample depends on the library protocol used: it can be
+strand-specific (stranded) or non strand-specific (non-stranded). Stranded
+paired-end RNA-seq is, in turn, divided into: libraries were
+the pair strand is that of the first alignment and libraries were the pair
+strand is that of the second alignment.
+
+Function `identifyStrandMode()` can be used to try to identify the library
+protocol used:
+```{r, message=FALSE, warning=FALSE}
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+library(gDNAx)
+
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+bams <- list.files(path, pattern="*.bam$", full.names=TRUE)
+
+strandM <- identifyStrandMode(bams, txdb, singleEnd=FALSE)
+strandM$strandMode
+```
+
+The `strandMode` identified is `0L`, meaning that a non-stranded protocol
+was used. See the help page of `strandMode` in the 
+`r Biocpkg("GenomicAlignments")` package for further details.
+
+Let's take a look at the `data.frame` with all strandedness values. The
+strandedness values are based on the proportion of reads aligning to the 
+same or opposite strand as transcripts in the annotations. See help page of
+`identifyStrandMode()` for more information.
+```{r}
+strandM$Strandedness
+```
+As we can see, the proportion of alignments overlapping
+transcripts when `strandMode = 1L` is used ("strandMode1" column) 
+is very similar to the one when `strandMode = 2L` is considered
+("strandMode2" column), which is compatible with an non-stranded library.
+
+On the other hand, the number of alignments used to compute strandedness is
+close to 60000, we and others [@signal2022how_are_we_stranded_here] recommend
+using a higher number (controlled with the `yieldSize` parameter).
+
+## Calculating and plotting diagnostics
+
+Once the `strandMode` is known, we can calculate gDNA contamination diagnostics
+using the `gDNAdx()` function. A subset of the alignments present in the BAM
+file are considered to obtain these diagnostics. The number of alignments used
+is set by the `yieldSize` parameter.
 
 ```{r, message=FALSE}
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 library(gDNAx)
 
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-path <- "/projects_fg/gDNA/LiYu22/Subset" ## to change later
-pdat <- read.csv(file.path(path, "phenodata.csv"), row.names=1)
-pdat
 bams <- list.files(path, pattern="*.bam$", full.names=TRUE)
+
 gdnax <- gDNAdx(bams, txdb, singleEnd=FALSE, strandMode=2L)
 gdnax
 ```
 
-Get statistics on the origin of alignments.
-
+We, then, can get statistics on the origin of alignments and strandedness with
+`getDx()`:
 ```{r}
 dx <- getDx(gdnax)
 dx
 ```
 
-Plot gDNA diagnostics. First the default..
+Next, we can plot the previous gDNA diagnostic measures using the default
+`plot()` function. This creates four plot, each one representing a diagnostic
+measure as a function of the percentage of intergenic alignments, which can
+be considered the most informative measure regarding gDNA contamination levels.
 
 ```{r defdiag, height=10, width=10, out.width="800px", fig.cap="Default diagnostics."}
 plot(gdnax, group=pdat$gDNA)
 ```
 
-The origin of alignments per sample.
+**Splice-compatible junction** (SCJ) alignments (spliced alignments overlapping 
+a transcript in a "splice compatible" way) and **splice compatible exonic**
+(SCE) alignments (alignments without a splice site, but that overlap a 
+transcript in a "splice compatible" way) are expected to come from RNA 
+sequenced reads. Instead, **intergenic** alignments (IGC) mainly come from DNA 
+sequenced reads. For this reason, we see a negative correlation between the
+percentage of SCJ or SCE alignments and the percentage of IGC alignments:
+higher gDNA contamination levels lead to more IGC alignments and less
+SCJ or SCE alignments.
+
+On the contrary, **intronic** (INT) alignments are positively correlated with
+IGC alignments and, thus, with gDNA contamination levels.
+
+Regarding the last plot, showing the strandedness value, in stranded RNA-seq
+protocols, we expect a  strandedness value close to 1, meaning that
+most reads align to the same strand than the annotated transcripts. Lower
+strandedness values can be indicative of gDNA contamination: reads sequenced
+from DNA are expected to align in equal proportions to both strands.
+Therefore, a low strandedness in a stranded RNA-seq experiment can be due to
+the presence of DNA reads (contamination) mapping to transcripts but in the
+opposite strand.
+
+
+Another plot to represent diagnostic measures is the one representing the 
+origin of alignments per sample. Fluctuations in this proportions
+evidence different levels of gDNA contamination in samples.
 
 ```{r alnorigins, height=4, width=8, out.width="800px", fig.cap="Alignment origins."}
 plotAlnOrigins(gdnax, group=pdat$gDNA)
 ```
 
-The estimated fragments length distributions.
+Finally, the estimated fragments length distributions can be plotted with
+`plotFrgLength()`. This plot can show any differences in fragment length
+distributions that may be present. This plot is only available for 
+paired-end data.
 
 ```{r frglen, height=4, width=8, out.width="800px", fig.cap="Estimated fragments length distributions."}
 plotFrgLength(gdnax)
@@ -82,8 +184,14 @@ plotFrgLength(gdnax)
 
 # Filter alignments according to an annotation
 
-We can filter splice-compatible alignments and write them into
-new BAM files as follows.
+The package also provides functions to filter splice-compatible alignments
+and write them into new BAM files. To do so, first we set the type
+of alignments to be included in the BAM file using `filterBAMtxFlag()`, and
+then we call the `filterBAMtx()` function. For instance, to keep only reads
+expected to come from RNA, we can set `isSpliceCompatibleJunction` and
+`isSpliceCompatibleExonic` to `TRUE`. The resulting BAM files are
+useful for performing downstream analyses, such as differential expression
+analysis, without the effect of gDNA contamination.
 
 ```{r, eval=FALSE}
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
@@ -102,6 +210,9 @@ list.files(tmpdir, pattern="*.bam$")
 ```{r}
 fstats
 ```
+
+We can see the number of alignments in each of the selected categories, and
+`NA` for those for which we did not retrieve any alignment.
 
 # Session information
 
