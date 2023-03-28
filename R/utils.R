@@ -123,6 +123,7 @@
 }
 
 ## private function .loadAnnotationPackageObject()
+#' @importFrom utils installed.packages
 .loadAnnotationPackageObject <- function(pkgName, argName, pkgType,
                                          verbose=TRUE) {
 
@@ -173,7 +174,7 @@
 ## private function .matchSeqinfo()
 
 #' @importFrom GenomeInfoDb seqlengths keepSeqlevels seqlevelsStyle
-#' @importFrom GenomeInfoDb seqinfo seqinfo<-
+#' @importFrom GenomeInfoDb seqinfo seqinfo<- seqlevelsStyle<- seqlevels
 .matchSeqinfo <- function(gal, tx, verbose=TRUE) {
     stopifnot("GAlignments" %in% class(gal) ||
               "GAlignmentPairs" %in% class(gal) ||
@@ -202,7 +203,7 @@
                                   "annotation package. These chromosomes",
                                   "will be discarded from further analysis",
                                   sep=" "),
-                            paste(commonChr[which(slenVcf != slenBSgenome)],
+                            paste(commonchr[which(slengal != slentx)],
                                   collapse=", ")))
         }
         if (sum(slengal == slentx) == 0)

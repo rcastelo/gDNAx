@@ -19,7 +19,7 @@
 #' @param stdChrom (Default TRUE) Logical value indicating whether only
 #' alignments in the 'standard chromosomes' should be used. Consult the help
 #' page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-#' from the package \code{\link[GenomeInfoDb]{GenomeInfoDb}} for further
+#' from the package \code{GenomeInfoDb} for further
 #' information.
 #'
 #' @param yieldSize (Default 5e5) Number of records to read from each input
@@ -42,16 +42,13 @@
 #'   \item "strandMode": the \code{strandMode} of the sample(s) following
 #'         \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 #'         class definition. If all samples have the same \code{strandMode},
-#'         the length of the vector is 1. In summary, it can take values:
-#'         \itemize{ 
-#'           \item 0: library is not strand-specific.
-#'           \item 1: strand of pair is strand of its first alignment. 
-#'           \item 2: strand of pair is strand of its second alignment.
-#'           \item "ambiguous": additional category used here for samples
-#'                 not fitting any of the three previous categories.
-#'         (see "Details" section below to know the classification criteria,
-#'         as well as to how to interpret results for single-end data).
-#'         }
+#'         the length of the vector is 1. In summary, it can take values: 0
+#'         (library is not strand-specific), 1 (strand of pair is strand of 
+#'         its first alignment), 2 (strand of pair is strand of its second 
+#'         alignment) or "ambiguous" (additional category used here for 
+#'         samples not fitting any of the three previous categories).
+#'         See "Details" section below to know the classification criteria,
+#'         as well as to how interpret results for single-end data.
 #'   \item "Strandedness": data.frame with one row per sample and 3 columns.
 #'         "strandMode1": proportion of alignments aligned to the same
 #'         strand than a transcript according

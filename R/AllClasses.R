@@ -5,7 +5,7 @@
 #'
 #' @slot bfl A \linkS4class{BamFileList} object.
 #'
-#' @slot txdb A \linkS4class{TxDb} object.
+#' @slot txdbpkg A \linkS4class{TxDb} object.
 #'
 #' @slot singleEnd Logical value indicating if reads are single (\code{TRUE})
 #' or paired-end (\code{FALSE}).
@@ -20,12 +20,12 @@
 #' @slot stdChrom Logical value indicating whether only alignments in the
 #' 'standard chromosomes' should be used. Consult the help page of the function
 #' \code{\link[GenomeInfoDb]{keepStandardChromosomes}} from the package
-#' \code{\link[GenomeInfoDb]{GenomeInfoDb}} for further information.
+#' \code{GenomeInfoDb} for further information.
 #'
 #' @slot readLength Integer value storing the read length.
 #'
 #' @slot yieldSize Integer value storing the number of alignments employed by
-#' the function \code{\link{gDNAquickdx}()}.
+#' the function \code{\link{gDNAdx}()}.
 #'
 #' @slot diagnostics A 'data.frame' object storing the diagnostics calculated
 #' by the function 'gDNAdx()'.
@@ -92,7 +92,10 @@ setMethod("getDx", "gDNAx",
 
 #' @param object A \linkS4class{gDNAx} object.
 #'
+#' @importFrom methods show
+#' 
 #' @export
+#' @aliases show
 #' @aliases show,gDNAx-method
 #' @rdname gDNAx-class
 setMethod("show", "gDNAx",

@@ -48,7 +48,7 @@ is ignored.}
 \item{stdChrom}{(Default TRUE) Logical value indicating whether only
 alignments in the 'standard chromosomes' should be used. Consult the help
 page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-from the package \code{\link[GenomeInfoDb]{GenomeInfoDb}} for further
+from the package \code{GenomeInfoDb} for further
 information.}
 
 \item{yieldSize}{(Default 1e5) Number of records to read from each input BAM
@@ -72,6 +72,8 @@ BAM files.}
 \item{labelpoints}{(Default FALSE) A logical indicator that labels points
 in those plots where each point represents a BAM file. Labels correspond
 to the index number of the BAM file in 'x'.}
+
+\item{...}{Named arguments to be passed to \code{\link[base:plot]{plot}}.}
 }
 \value{
 A \linkS4class{gDNAx} object.

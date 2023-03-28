@@ -138,7 +138,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom Rsamtools bamWhat bamTag
 #' @importFrom S4Vectors DataFrame mcols<-
 #' @importFrom GenomeInfoDb seqlengths
-#' @importFrom GenomicAlignments GAlignments njunc
+#' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
     n <- 5 ## this number is derived from the fact that .scj_filter()
            ## is called by 'eval()' within the 'filterBam()' function
@@ -248,6 +248,27 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #' file should be filtered using the function 'filterBAMtx()',
 #' among being splice-compatible with one or more junctions,
 #' splice-compatible exonic, intronic or intergenic.
+#' 
+#' @param isSpliceCompatibleJunction (Default FALSE) Logical value indicating
+#'        if spliced alignments overlapping a transcript in a 
+#'        "splice compatible" way should be included in the BAM file. For
+#'        paired-end reads, one or both alignments must have one or more splice
+#'        site(s) compatible with splicing. See 
+#'        \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.
+#' 
+#' @param isSpliceCompatibleExonic (Default FALSE) Logical value indicating
+#'        if alignments without a splice site, but that overlap a transcript
+#'        in a "splice compatible" way, should be included in the BAM file.
+#'        For paired-end reads, none of the alignments must be spliced, and
+#'        each pair can be in different exons (or in the same one), as long as
+#'        they are "splice compatible". See 
+#'        \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.
+#'        
+#' @param isIntronic (Default FALSE) Logical value indicating if alignments
+#'        mapping to introns should be included in the BAM file.
+#'
+#' @param isIntergenic (Default FALSE) Logical value indicating if alignments
+#'        aligned to intergenic regions should be included in the BAM file.
 #'
 #' @export
 #' @rdname filterBAMtx
@@ -271,6 +292,10 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
 }
 
 
+#' @param flag A value from a call to the function 'filterBAMtxFlag()'.
+#' 
+#' @param value A character vector with the name of a flag.
+#' 
 #' @importFrom bitops bitAnd
 #'
 #' @export

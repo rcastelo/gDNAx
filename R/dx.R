@@ -26,7 +26,7 @@
 #' @param stdChrom (Default TRUE) Logical value indicating whether only
 #' alignments in the 'standard chromosomes' should be used. Consult the help
 #' page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-#' from the package \code{\link[GenomeInfoDb]{GenomeInfoDb}} for further
+#' from the package \code{GenomeInfoDb} for further
 #' information.
 #'
 #' @param yieldSize (Default 1e5) Number of records to read from each input BAM
@@ -50,6 +50,7 @@
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers
+#' @importFrom methods new
 #' @export
 #' @rdname gDNAdx
 
@@ -321,7 +322,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 ## pmapToTranscripts() function.
 #' @importFrom IRanges IRanges
 #' @importFrom S4Vectors queryHits subjectHits
-#' @importFrom GenomicRanges GRanges start width strand
+#' @importFrom GenomicRanges GRanges start width strand resize
 #' @importFrom GenomicFeatures pmapToTranscripts
 #' @importFrom GenomicAlignments granges
 .sampleFragmentsLength <- function(gal, tx, alnhits, nfrgs) {
@@ -429,8 +430,13 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @param labelpoints (Default FALSE) A logical indicator that labels points
 #' in those plots where each point represents a BAM file. Labels correspond
 #' to the index number of the BAM file in 'x'.
+#' 
+#' @param ... Named arguments to be passed to \code{\link[base:plot]{plot}}.
 #'
 #' @importFrom plotrix thigmophobe
+#' @importFrom graphics grid text par legend
+#' @importFrom stats setNames
+#' 
 #' @export
 #' @rdname gDNAdx
 setMethod("plot", signature(x="gDNAx"),
@@ -496,6 +502,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
 ## private function .setColorGrouping()
 
 #' @importFrom RColorBrewer brewer.pal
+#' @importFrom grDevices colorRampPalette
 .setColorGrouping <- function(group, dx) {
     grpcol <- "black"
     if (length(group) > 1) {
@@ -535,6 +542,9 @@ function(x, group=1L, labelpoints=FALSE, ...) {
 #' as BAM files analyzed in 'x', whose values define groups among those
 #' BAM files.
 #'
+#' @importFrom graphics barplot mtext par legend lines axis boxplot points
+#' @importFrom stats density setNames
+#' 
 #' @export
 #' @rdname gDNAdx
 plotAlnOrigins <- function(x, group=1L) {

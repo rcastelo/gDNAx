@@ -47,6 +47,31 @@ to configure the parallel execution of the code. By default, a
 \linkS4class{SerialParam} object is used, which does not use any
 parallelization, with the flag \code{progress=TRUE} to show progress
 through the calculations.}
+
+\item{isSpliceCompatibleJunction}{(Default FALSE) Logical value indicating
+if spliced alignments overlapping a transcript in a 
+"splice compatible" way should be included in the BAM file. For
+paired-end reads, one or both alignments must have one or more splice
+site(s) compatible with splicing. See 
+\code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.}
+
+\item{isSpliceCompatibleExonic}{(Default FALSE) Logical value indicating
+if alignments without a splice site, but that overlap a transcript
+in a "splice compatible" way, should be included in the BAM file.
+For paired-end reads, none of the alignments must be spliced, and
+each pair can be in different exons (or in the same one), as long as
+they are "splice compatible". See 
+\code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.}
+
+\item{isIntronic}{(Default FALSE) Logical value indicating if alignments
+mapping to introns should be included in the BAM file.}
+
+\item{isIntergenic}{(Default FALSE) Logical value indicating if alignments
+aligned to intergenic regions should be included in the BAM file.}
+
+\item{flag}{A value from a call to the function 'filterBAMtxFlag()'.}
+
+\item{value}{A character vector with the name of a flag.}
 }
 \value{
 A vector of output filename paths.

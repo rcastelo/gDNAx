@@ -6,6 +6,7 @@
 \alias{getDx}
 \alias{getDx,gDNAx-method}
 \alias{show,gDNAx-method}
+\alias{show}
 \title{gDNAx class}
 \usage{
 \S4method{getDx}{gDNAx}(x)
@@ -26,7 +27,7 @@ This is a class for storing the results of a call to the
 \describe{
 \item{\code{bfl}}{A \linkS4class{BamFileList} object.}
 
-\item{\code{txdb}}{A \linkS4class{TxDb} object.}
+\item{\code{txdbpkg}}{A \linkS4class{TxDb} object.}
 
 \item{\code{singleEnd}}{Logical value indicating if reads are single (\code{TRUE})
 or paired-end (\code{FALSE}).}
@@ -41,12 +42,12 @@ class for further detail.}
 \item{\code{stdChrom}}{Logical value indicating whether only alignments in the
 'standard chromosomes' should be used. Consult the help page of the function
 \code{\link[GenomeInfoDb]{keepStandardChromosomes}} from the package
-\code{\link[GenomeInfoDb]{GenomeInfoDb}} for further information.}
+\code{GenomeInfoDb} for further information.}
 
 \item{\code{readLength}}{Integer value storing the read length.}
 
 \item{\code{yieldSize}}{Integer value storing the number of alignments employed by
-the function \code{\link{gDNAquickdx}()}.}
+the function \code{\link{gDNAdx}()}.}
 
 \item{\code{diagnostics}}{A 'data.frame' object storing the diagnostics calculated
 by the function 'gDNAdx()'.}
