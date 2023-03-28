@@ -88,6 +88,9 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                                yieldSize=500000L, verbose=TRUE,
                                BPPARAM=SerialParam(progressbar=verbose)) {
   
+    yieldSize <- .checkYieldSize(yieldSize)
+    bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
+  
     if (is.character(txdb))
       txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                            verbose=verbose)
@@ -125,6 +128,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind",strbysm)
+    .checkMinNaln(strbysm) # warning if n. align < 1e+05
     
     sm <- .decideStrandMode(strbysm)
     
@@ -206,13 +210,16 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                 "cause strandedness value to be low.")
     
     if (reportAll) {
+        naln <- nalnst + nalnisst + length(ambaln)
+
         ## strandedness value (according to strandMode specified)
-        strness <- nalnst / (nalnst + nalnisst + length(ambaln))
+        strness <- nalnst / naln
         
         ## strandedness value (opposito to strandMode specified)
-        strnessis <- nalnisst / (nalnst + nalnisst + length(ambaln))
+        strnessis <- nalnisst / naln
         
-        c("strandMode1" = strness, "strandMode2" = strnessis, "ambig" = ambig)
+        c("strandMode1" = strness, "strandMode2" = strnessis, "ambig" = ambig,
+          "Nalignments" = naln)
       
     } else {
         ## strandedness value (according to strandMode specified) ignoring
@@ -244,6 +251,19 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     sm
 }
 
+## Private function to issue a warning when the strandedness value is
+## computed from a low number of alignments
+.checkMinNaln <- function(strbysm) {
+  
+    lownaln <- strbysm[,"Nalignments"] < 1e+05
+    
+    if (any(lownaln))
+      warning("The following samples had less than 1e+05 alignments ",
+              "overlapping a transcript, decreasing the accuracy of the ",
+              sprintf("strandedness value: %s. ", 
+                      paste(rownames(strbysm)[lownaln], collapse = ", ")),
+              "Consider increasing the 'yieldSize'.")
+}
 
 
 
