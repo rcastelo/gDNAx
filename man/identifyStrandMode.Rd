@@ -9,7 +9,7 @@ identifyStrandMode(
   txdb,
   singleEnd = TRUE,
   stdChrom = TRUE,
-  yieldSize = 500000L,
+  yieldSize = 1000000L,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -34,10 +34,7 @@ from the package \code{GenomeInfoDb} for further
 information.}
 
 \item{yieldSize}{(Default 5e5) Number of records to read from each input
-BAM file. A small \code{yieldSize} can lead to an even lower number
-of records aligning to transcripts (i.e. the ones used to identify
-the \code{strandMode}), thus decreasing the accuracy of the 
-reported strandedness values.}
+BAM file.}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
@@ -90,4 +87,7 @@ interpretation of \code{strandMode = 1L} and \code{strandMode = 2L}
 changes: when \code{strandMode = 1L} the strand of the read is concordant
 with the reference annotations, when \code{strandMode = 2L} the correct 
 read strand is the opposite to the one of the read.
+
+A subset of 200,000 alignments overlapping gene annotations are used to
+compute strandedness.
 }

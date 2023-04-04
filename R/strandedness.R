@@ -23,10 +23,7 @@
 #' information.
 #'
 #' @param yieldSize (Default 5e5) Number of records to read from each input
-#' BAM file. A small \code{yieldSize} can lead to an even lower number
-#' of records aligning to transcripts (i.e. the ones used to identify
-#' the \code{strandMode}), thus decreasing the accuracy of the 
-#' reported strandedness values.
+#' BAM file.
 #'
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
@@ -73,6 +70,10 @@
 #' changes: when \code{strandMode = 1L} the strand of the read is concordant
 #' with the reference annotations, when \code{strandMode = 2L} the correct 
 #' read strand is the opposite to the one of the read.
+#' 
+#' A subset of 200,000 alignments overlapping gene annotations are used to
+#' compute strandedness.
+#' 
 #'
 #' @importFrom BiocGenerics basename path
 #' @importFrom S4Vectors mcols mcols<-
@@ -85,7 +86,7 @@
 #' @rdname identifyStrandMode
 
 identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
-                               yieldSize=500000L, verbose=TRUE,
+                               yieldSize=1000000L, verbose=TRUE,
                                BPPARAM=SerialParam(progressbar=verbose)) {
   
     yieldSize <- .checkYieldSize(yieldSize)
@@ -147,24 +148,48 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
       close(bf)
     
     if (verbose)
-      message(sprintf("Reading first %d alignments from %s",
-                      yieldSize(bf), basename(path(bf))))
-  
+      message(sprintf("Computing strandedness from %s", basename(path(bf))))
+    
+    i <- 0L
     gal <- NULL
-    if (singleEnd)
-      gal <- readGAlignments(bf, param=param, use.names=FALSE)
-    else
-      gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
-                                 use.names=FALSE)
-    if (stdChrom)
-      gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+    naln <- 0L
+    nalnbystr <- integer(4L)
+    open(bf)
+    while (naln < 2e+05 & i < 10) {
+      if (singleEnd)
+          gal <- readGAlignments(bf, param=param, use.names=FALSE)
+      else
+          gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
+                                   use.names=FALSE)
+      if (stdChrom)
+          gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+      
+      if (length(gal) == 0)
+          break
+      
+      gal <- .matchSeqinfo(gal, tx, verbose)
+      
+      nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE)
+      nalnbystr <- nalnbf + nalnbystr
+      naln <- nalnbystr["Nalignments"]
+      i <- i + 1
+    }
+    on.exit(close(bf))
     
-    if (verbose)
-      message(sprintf("Processing alignments from %s", basename(path(bf))))
+    if (i >= 10)
+        warning(sprintf("Reading 10 million alignments from %s was not enough to get >= 2e+05 alignments overlapping a gene, this can affect the accuracy of the strandedness", basename(path(bf))))
     
-    gal <- .matchSeqinfo(gal, tx, verbose)
+    ## strandedness value (according to strandMode specified)
+    strness <- nalnbystr["nalnst"] / naln
     
-    strbysm <- .getStrandedness(gal, tx, reportAll=TRUE)
+    ## strandedness value (opposite to strandMode specified)
+    strnessis <- nalnbystr["nalnisst"] / naln
+    
+    ## proportion of alignments considered ambiguous
+    strnessambig <- nalnbystr["ambig"] / naln
+    
+    strbysm <- c(strness, strnessis, strnessambig, naln)
+    names(strbysm) <- c("strandMode1", "strandMode2", "ambig", "Nalignments")
     strbysm
 }
 
@@ -177,57 +202,51 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @importFrom GenomicRanges GRanges
 .getStrandedness <- function(gal, tx, reportAll=FALSE) {
   
-    if (reportAll & is(gal, "GAlignmentPairs")) 
-        if (strandMode(gal) != 1L)
-            stop("In .getStrandedness() strandMode of 'gal' must be 1L when ",
-                "'reportAll = TRUE'.")
+  if (reportAll & is(gal, "GAlignmentPairs")) 
+    if (strandMode(gal) != 1L)
+      stop("strandMode of 'gal' must be 1L when ",
+           "'reportAll = TRUE'.")
+  
+  ## calculate overlaps between alignments and transcripts
+  ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=FALSE)
+  
+  ## build a mask to select only 1 overlap per alignment (to avoid counting
+  ## twice an alignment if it maps to > transcript)
+  ovtxaln <- ovtx[!duplicated(queryHits(ovtx))]
+  
+  ## calculate overlaps between antisense alignments and transcripts
+  ovtxis <- findOverlaps(invertStrand(GRanges(gal)), tx, ignore.strand=FALSE)
+  ovtxisaln <- ovtxis[!duplicated(queryHits(ovtxis))]
+  
+  ## identifying ambiguous alignments (mapping to regions with transcripts in
+  ## both strands)
+  ambaln <- intersect(queryHits(ovtxaln), queryHits(ovtxisaln))
+  
+  ## number of alignments aligned to correct strand of transcripts
+  nalnst <- sum(!queryHits(ovtxaln) %in% ambaln)
+  
+  ## number of alignments aligned to oposite strand of transcripts
+  nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
+  
+  ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
+  if (ambig > 0.10)
+    warning("The proportion of alignments mapping to regions with ",
+            "transcripts annotated to both strands is > 0.10, this can ",
+            "cause strandedness value to be low.")
+  
+  if (reportAll) {
+    naln <- nalnst + nalnisst + length(ambaln)
     
-    ## calculate overlaps between alignments and transcripts
-    ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=FALSE)
+    c("nalnst" = nalnst, "nalnisst" = nalnisst, "ambig" = length(ambaln),
+      "Nalignments" = naln)
     
-    ## build a mask to select only 1 overlap per alignment (to avoid counting
-    ## twice an alignment if it maps to > transcript)
-    ovtxaln <- ovtx[!duplicated(queryHits(ovtx))]
+  } else {
+    ## strandedness value (according to strandMode specified) ignoring
+    ## proportion of ambiguous alignments
+    strness2 <- nalnst / (nalnst + nalnisst)
     
-    ## calculate overlaps between antisense alignments and transcripts
-    ovtxis <- findOverlaps(invertStrand(GRanges(gal)), tx, ignore.strand=FALSE)
-    ovtxisaln <- ovtxis[!duplicated(queryHits(ovtxis))]
-    
-    ## identifying ambiguous alignments (mapping to regions with transcripts in
-    ## both strands)
-    ambaln <- intersect(queryHits(ovtxaln), queryHits(ovtxisaln))
-    
-    ## number of alignments aligned to correct strand of transcripts
-    nalnst <- sum(!queryHits(ovtxaln) %in% ambaln)
-    
-    ## number of alignments aligned to oposite strand of transcripts
-    nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
-    
-    ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
-    if (ambig > 0.10)
-        warning("The proportion of alignments mapping to regions with ",
-                "transcripts annotated to both strands is > 0.10, this can ",
-                "cause strandedness value to be low.")
-    
-    if (reportAll) {
-        naln <- nalnst + nalnisst + length(ambaln)
-
-        ## strandedness value (according to strandMode specified)
-        strness <- nalnst / naln
-        
-        ## strandedness value (opposito to strandMode specified)
-        strnessis <- nalnisst / naln
-        
-        c("strandMode1" = strness, "strandMode2" = strnessis, "ambig" = ambig,
-          "Nalignments" = naln)
-      
-    } else {
-        ## strandedness value (according to strandMode specified) ignoring
-        ## proportion of ambiguous alignments
-        strness2 <- nalnst / (nalnst + nalnisst)
-        
-        strness2
-    }
+    strness2
+  }
 }
 
 ## Private function to decide strandMode based on .getStrandedness() output
@@ -261,8 +280,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
       warning("The following samples had less than 1e+05 alignments ",
               "overlapping a transcript, decreasing the accuracy of the ",
               sprintf("strandedness value: %s. ", 
-                      paste(rownames(strbysm)[lownaln], collapse = ", ")),
-              "Consider increasing the 'yieldSize'.")
+                      paste(rownames(strbysm)[lownaln], collapse = ", ")))
 }
 
 
