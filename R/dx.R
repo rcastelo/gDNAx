@@ -449,7 +449,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
     group <- grp$group
     grpcol <- grp$col
 
-    par(mfrow=c(2, 2), mar=c(5, 5, 2, 2))
+    par(mfrow=c(2, 2), mar=c(5, 5, 2, 2), xpd=FALSE)
     ## IGC x SCJ
     plot(dx$IGC, dx$SCJ, pch=19, panel.first=grid(), las=1,
          xlab="Intergenic alignments (%)",
@@ -458,9 +458,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
       pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
       text(dx$IGC, dx$SCJ+dx$SCE, as.character(1:nrow(dx)), cex=0.5, pos=pos)
     }
-    if (is.factor(group))
-      legend("topright", levels(group), col=grpcol, pch=19, inset=0.01,
-             bg="white")
+
     ## IGC x SCE
     plot(dx$IGC, dx$SCE, pch=19, panel.first=grid(), las=1,
          xlab="Intergenic alignments (%)",
@@ -469,9 +467,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
       pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
       text(dx$IGC, dx$SCJ+dx$SCE, as.character(1:nrow(dx)), cex=0.5, pos=pos)
     }
-    if (is.factor(group))
-      legend("topright", levels(group), col=grpcol, pch=19, inset=0.01,
-             bg="white")
+
     ## IGC x INT
     plot(dx$IGC, dx$INT, pch=19, panel.first=grid(), las=1,
          xlab="Intergenic alignments (%)",
@@ -480,9 +476,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
       pos <- setNames(thigmophobe(dx$IGC, dx$INT), rownames(x))
       text(dx$IGC, dx$INT, as.character(1:nrow(dx)), cex=0.5, pos=pos)
     }
-    if (is.factor(group))
-      legend("bottomright", levels(group), col=grpcol, pch=19, inset=0.01,
-             bg="white")
+
     xrng <- range(dx$SCJ)
     yrng <- range(dx$SCE)
     ## STRANDEDNESS
@@ -493,9 +487,10 @@ function(x, group=1L, labelpoints=FALSE, ...) {
       pos <- setNames(thigmophobe(dx$IGC, dx$STRAND), rownames(x))
       text(dx$IGC, dx$STRAND, as.character(1:nrow(dx)), cex=0.5, pos=pos)
     }
+    
     if (is.factor(group))
-      legend("topright", levels(group), col=grpcol, pch=19, inset=0.01,
-             bg="white")
+      legend("topleft", levels(group), col=grpcol, pch=19, inset=c(-0.3,-0.7),
+             bg="white", xpd=NA)
 
 })
 
