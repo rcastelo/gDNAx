@@ -58,7 +58,23 @@ diagnostics related to gDNA contamination levels.
 
 To do so, a subset of the data in [@li2022genes] is used. This data consists
 in 9 paired-end samples of total RNA-seq with increasing levels of gDNA
-contamination: three contamination levels (0, 1 and 10) with 3 replicates each.
+contamination: 0% (no contamination), 1% and 10%, with 3 replicates each.
+The data is available through the `gDNAinRNAseqData` package. BAM files
+contain about 100,000 alignments, sampled uniformly at random from complete
+BAM files.
+
+```{r, message=FALSE, eval = FALSE}
+library(gDNAinRNAseqData)
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+bamfiles
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+pdat
+```
+
 
 ```{r, message=FALSE}
 path <- "/projects_fg/gDNA/LiYu22/Subset" ## to change later
@@ -103,6 +119,12 @@ As we can see, the proportion of alignments overlapping
 transcripts when `strandMode = 1L` is used ("strandMode1" column) 
 is very similar to the one when `strandMode = 2L` is considered
 ("strandMode2" column), which is compatible with an non-stranded library.
+This contrasts with the reported stranded protocol used to obtain this data
+according to [@li2022genes]. However, the results obtained by
+`identifyStrandMode()` were contrasted with results of the RSeQC 
+`infer_experiment.py` tool ([@wang2012rseqc]) and visual inspection of data
+in the Integrative Genomics Viewer (IGV) ([@robinson2011integrative]), all
+of which point to an unstranded RNA-seq experiment.
 
 On the other hand, the number of alignments used to compute strandedness is
 close to 60000, we and others [@signal2022how_are_we_stranded_here] recommend
