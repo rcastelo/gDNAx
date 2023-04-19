@@ -76,13 +76,6 @@ pdat
 ```
 
 
-```{r, message=FALSE}
-path <- "/projects_fg/gDNA/LiYu22/Subset" ## to change later
-pdat <- read.csv(file.path(path, "phenodata.csv"), row.names=1)
-pdat
-```
-
-
 ## Identifying `strandMode`
 
 The `strandMode` of a sample depends on the library protocol used: it can be
