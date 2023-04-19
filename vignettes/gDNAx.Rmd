@@ -91,15 +91,14 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 library(gDNAx)
 
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-bams <- list.files(path, pattern="*.bam$", full.names=TRUE)
 
-strandM <- identifyStrandMode(bams, txdb, singleEnd=FALSE)
+strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
 strandM$strandMode
 ```
 
-The `strandMode` identified is `0L`, meaning that a non-stranded protocol
-was used. See the help page of `strandMode` in the 
-`r Biocpkg("GenomicAlignments")` package for further details.
+The `strandMode` identified is `NA`, meaning that a non-stranded protocol
+was used. See the "Details" section in the help page of `identifyStrandMode()`
+for further details.
 
 Let's take a look at the `data.frame` with all strandedness values. The
 strandedness values are based on the proportion of reads aligning to the 

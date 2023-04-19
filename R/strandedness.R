@@ -39,7 +39,7 @@
 #'   \item "strandMode": the \code{strandMode} of the sample(s) following
 #'         \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 #'         class definition. If all samples have the same \code{strandMode},
-#'         the length of the vector is 1. In summary, it can take values: 0
+#'         the length of the vector is 1. In summary, it can take values: \code{NA}
 #'         (library is not strand-specific), 1 (strand of pair is strand of 
 #'         its first alignment), 2 (strand of pair is strand of its second 
 #'         alignment) or "ambiguous" (additional category used here for 
@@ -59,11 +59,11 @@
 #' If the value in the "strandMode1" column is > 0.90, \code{strandMode} is set
 #' to 1L. If "strandMode2" column is > 0.90, \code{strandMode} is set to 2L. If
 #' "strandMode1" and "strandMode2" are comprised between 0.40 and 0.60,
-#' \code{strandMode} is set to 0L. If none of the three previous criteria
+#' \code{strandMode} is set to \code{NA} If none of the three previous criteria
 #' are met, \code{strandMode} is set to "ambiguous". This criteria can be
-#' conservative in some cases (e.g. presence of genomic DNA contamination,
-#' small \code{yieldSize}, etc.), for this reason we recommend to check
-#' the data.frame with strandedness values.
+#' conservative in some cases (e.g. when there is genomic DNA contamination), 
+#' for this reason we recommend to check the data.frame with strandedness 
+#' values.
 #'  
 #' In case of single-end data, the same criteria are used, but the
 #' interpretation of \code{strandMode = 1L} and \code{strandMode = 2L}
@@ -128,12 +128,13 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                         verbose=verbose)
     
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
-    strbysm <- do.call("rbind",strbysm)
+    strbysm <- do.call("rbind", strbysm)
     .checkMinNaln(strbysm) # warning if n. align < 1e+05
     
     sm <- .decideStrandMode(strbysm)
     
     strbysmtype <- list("strandMode" = sm, "Strandedness" = strbysm)
+    strbysmtype
 }
 
 ## Private function to get strandedness from BAM file
@@ -257,14 +258,14 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     sm[strbysm[,"strandMode2"] > 0.9] <- 2L
     unkn <- strbysm[,"strandMode1"] > 0.40 & strbysm[,"strandMode1"] < 0.60 &
       strbysm[,"strandMode2"] > 0.40 & strbysm[,"strandMode2"] < 0.60
-    sm[unkn] <- 0L
+    sm[unkn] <- NA
     # sm[strbysm[,"ambig"] > 0.15] <- "highAmbiguous"
     
     names(sm) <- rownames(strbysm)
     if (length(unique(sm)) == 1)
         sm <- unique(sm)
     
-    if (!any(sm == "ambiguous"))
+    if (!any(sm == "ambiguous" | is.na(sm)))
         sm <- as.integer(sm)
     
     sm
@@ -278,7 +279,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     
     if (any(lownaln))
       warning("The following samples had less than 1e+05 alignments ",
-              "overlapping a transcript, decreasing the accuracy of the ",
+              "overlapping exonic regions, decreasing the accuracy of the ",
               sprintf("strandedness value: %s. ", 
                       paste(rownames(strbysm)[lownaln], collapse = ", ")))
 }
