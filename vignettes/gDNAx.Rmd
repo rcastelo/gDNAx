@@ -144,7 +144,7 @@ dx
 ```
 
 Next, we can plot the previous gDNA diagnostic measures using the default
-`plot()` function. This creates four plot, each one representing a diagnostic
+`plot()` function. This creates four plots, each one representing a diagnostic
 measure as a function of the percentage of intergenic alignments, which can
 be considered the most informative measure regarding gDNA contamination levels.
 Here, strandedness values (STRAND column) are `NA` since the dataset is not
