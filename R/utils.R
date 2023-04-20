@@ -221,7 +221,7 @@
 
     ## set the seqinfo information to the one of the TxDb annotations
     mt <- match(commonchr, seqlevels(gal))
-    seqinfo(gal, new2old=mt) <- seqinfo(tx)[commonchr]
+    seqinfo(gal, new2old=mt, pruning.mode="coarse") <- seqinfo(tx)[commonchr]
 
     gal
 }
