@@ -28,14 +28,14 @@ Imports:
     RColorBrewer,
     AnnotationDbi,
     bitops,
-    plotrix,
-    gDNAinRNAseqData
+    plotrix
 Suggests:
     BiocStyle,
     knitr,
     rmarkdown,
     RUnit,
-    TxDb.Hsapiens.UCSC.hg38.knownGene
+    TxDb.Hsapiens.UCSC.hg38.knownGene,
+    gDNAinRNAseqData
 biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics
 VignetteBuilder: knitr
 RoxygenNote: 7.2.3
