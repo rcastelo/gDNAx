@@ -15,13 +15,13 @@
 #' @param singleEnd (Default FALSE) Logical value indicating if reads are
 #' single (\code{TRUE}) or paired-end (\code{FALSE}).
 #'
-#' @param strandMode (Default 1) Numeric vector which can take values 0, 1 or
-#' 2. The strand mode is a per-object switch on
+#' @param strandMode (Default 1L) Numeric vector which can take values 0, 1,
+#' 2 or \code{NA}. The strand mode is a per-object switch on
 #' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 #' objects that controls the behavior of the strand getter. See
 #' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 #' class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
-#' is ignored.
+#' is ignored. For not strand-specific libraries, use \code{NA}
 #'
 #' @param stdChrom (Default TRUE) Logical value indicating whether only
 #' alignments in the 'standard chromosomes' should be used. Consult the help
@@ -178,9 +178,13 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     gal <- NULL
     if (singleEnd)
         gal <- readGAlignments(bf, param=param, use.names=FALSE)
-    else
-        gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
-                                   use.names=FALSE)
+    else {
+        if (is.na(strandMode))
+            gal <- readGAlignmentPairs(bf, param=param, use.names=FALSE)
+        else
+            gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
+                                        use.names=FALSE)
+    }
     if (stdChrom)
         gal <- keepStandardChromosomes(gal, pruning.mode="fine")
 
@@ -191,16 +195,16 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     naln <- length(gal)
 
     ## intergenic alignments
-    igcaln <- .igcAlignments(gal, igc, fragmentsLen=TRUE, nfrgs=1000)
+    igcaln <- .igcAlignments(gal, igc,fragmentsLen=TRUE,nfrgs=1000)
     nigcaln <- sum(igcaln$igcmask)
 
     ## intronic alignments
-    intaln <- .intAlignments(gal, int, fragmentsLen=TRUE, nfrgs=1000)
+    intaln <- .intAlignments(gal, int, strandMode,fragmentsLen=TRUE,nfrgs=1000)
     nintaln <- sum(intaln$intmask)
 
     ## splice-compatible alignments
-    scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, fragmentsLen=TRUE,
-                             nfrgs=1000)
+    scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
+                             fragmentsLen=TRUE, nfrgs=1000)
     nscjaln <- sum(scoaln$scjmask)
     nscealn <- sum(scoaln$scemask)
     nsccaln <- sum(scoaln$sccmask)
@@ -214,7 +218,10 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     }
     
     ## strandedness
-    strness <- .getStrandedness(gal, tx, reportAll=FALSE)
+    if (is.na(strandMode))
+        strness <- NA
+    else
+        strness <- .getStrandedness(gal, tx, reportAll=FALSE)
 
     return(list(naln=naln, nigcaln=nigcaln, nintaln=nintaln, nscjaln=nscjaln,
                 nscealn=nscealn, nsccaln=nsccaln, igcfrglen=igcfrglen,
@@ -237,10 +244,12 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     res
 }
 
-## private function .intAlignments() to find intergenic alignments
+## private function .intAlignments() to find intronic alignments
 #' @importFrom IRanges findOverlaps
-.intAlignments <- function(gal, int, fragmentsLen, nfrgs=1000) {
-    ovin <- findOverlaps(GRanges(gal), int, type="within", ignore.strand=FALSE)
+.intAlignments <- function(gal, int, strandMode, fragmentsLen, nfrgs=1000) {
+    ignore.strand <- ifelse(is.na(strandMode), TRUE, FALSE)
+    ovin <- findOverlaps(GRanges(gal), int, type="within", 
+                         ignore.strand=ignore.strand)
     intmask <- countQueryHits(ovin) > 0
     res <- list(intmask=intmask)
     if (fragmentsLen) {
@@ -260,10 +269,11 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicRanges GRanges grglist
 #' @importFrom GenomicAlignments encodeOverlaps isCompatibleWithSplicing
 #' @importFrom GenomicAlignments isCompatibleWithSkippedExons
-.scoAlignments <- function(gal, tx, tx2gene, singleEnd, fragmentsLen,
-                           nfrgs=1000) {
+.scoAlignments <- function(gal, tx, tx2gene, singleEnd, strandMode,
+                           fragmentsLen, nfrgs=1000) {
+    ignore.strand <- ifelse(is.na(strandMode), TRUE, FALSE)
     ## calculate overlaps between alignments and transcripts
-    ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=FALSE)
+    ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=ignore.strand)
 
     ## build mask to select alignments overlapping a single gene
     ovgenes <- tx2gene[subjectHits(ovtx)]
@@ -275,7 +285,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 
     ## alignments compatible with splicing over the given transcriptome
     ovtxenc <- encodeOverlaps(grglist(gal), tx, hits=ovtx,
-                              flip.query.if.wrong.strand=TRUE)
+                              flip.query.if.wrong.strand=ignore.strand)
     masksplovtx <- isCompatibleWithSplicing(ovtxenc)
     maskskpovtx <- isCompatibleWithSkippedExons(ovtxenc)
     junencpat <- "2--|--2|3--|--3"
@@ -308,8 +318,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
                 sccmask=sum(njunc(gal) > 0))
     scjfrglen <- scefrglen <- NA_integer_
     if (!singleEnd && fragmentsLen) { ## for paired-end, get fragments length
-      res$scjfrglen <- .sampleFragmentsLength(gal, tx, ovscjtx, nfrgs)
-      res$scefrglen <- .sampleFragmentsLength(gal, tx, ovscetx, nfrgs)
+      res$scjfrglen <- .sampleFragmentsLength(gal, tx, ovscjtx, strandMode, nfrgs)
+      res$scefrglen <- .sampleFragmentsLength(gal, tx, ovscetx, strandMode, nfrgs)
     }
 
     res
@@ -325,7 +335,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicRanges GRanges start width strand resize
 #' @importFrom GenomicFeatures pmapToTranscripts
 #' @importFrom GenomicAlignments granges
-.sampleFragmentsLength <- function(gal, tx, alnhits, nfrgs) {
+.sampleFragmentsLength <- function(gal, tx, alnhits, strandMode, nfrgs) {
+    ignore.strand <- ifelse(is.na(strandMode), TRUE, FALSE)
     alnhits.sam <- alnhits
     if (length(alnhits.sam) > nfrgs) {
         sam <- sample(seq_along(alnhits), size=nfrgs)
@@ -333,12 +344,21 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     }
     grsaln <- granges(gal[queryHits(alnhits.sam)])
     txsaln <- tx[subjectHits(alnhits.sam)]
-    grsaln.txstart <- pmapToTranscripts(resize(grsaln, width=1, fix="start"), txsaln)
-    grsaln.txend <- pmapToTranscripts(resize(grsaln, width=1, fix="end"), txsaln)
+    grsaln.txstart <- pmapToTranscripts(resize(grsaln, width=1, fix="start"), 
+                                        txsaln, ignore.strand=ignore.strand)
+    grsaln.txend <- pmapToTranscripts(resize(grsaln, width=1, fix="end"), 
+                                      txsaln, ignore.strand=ignore.strand)
     stopifnot(all(width(grsaln.txstart) > 0)) ## QC
     stopifnot(all(width(grsaln.txend) > 0)) ## QC
     stopifnot(all(!duplicated(queryHits(alnhits.sam)))) ## QC
     w <- start(grsaln.txend) - start(grsaln.txstart)
+    
+    # when 'ignore.strand = TRUE' in pmapToTranscripts(), and strand of read 
+    # is "-", 'grsaln.txstart' > 'grsaln.txend', resulting in a 'w' < 0
+    if (ignore.strand) {
+        wh <- which(as.character(strand(grsaln)) == "-")
+        w[wh] <- abs(w[wh])
+    }
     stopifnot(all(w > 0)) ## QC
     w
 }
@@ -480,12 +500,14 @@ function(x, group=1L, labelpoints=FALSE, ...) {
     xrng <- range(dx$SCJ)
     yrng <- range(dx$SCE)
     ## STRANDEDNESS
-    plot(dx$IGC, dx$STRAND, pch=19, panel.first=grid(), las=1,
-         xlab="Intergenic alignments (%)",
-         ylab="Strandedness", col=grpcol[as.integer(group)])
-    if (labelpoints) {
-      pos <- setNames(thigmophobe(dx$IGC, dx$STRAND), rownames(x))
-      text(dx$IGC, dx$STRAND, as.character(1:nrow(dx)), cex=0.5, pos=pos)
+    if (!all(is.na(dx$STRAND))) {
+        plot(dx$IGC, dx$STRAND, pch=19, panel.first=grid(), las=1,
+             xlab="Intergenic alignments (%)",
+             ylab="Strandedness", col=grpcol[as.integer(group)])
+        if (labelpoints) {
+            pos <- setNames(thigmophobe(dx$IGC, dx$STRAND), rownames(x))
+            text(dx$IGC, dx$STRAND, as.character(1:nrow(dx)), cex=0.5, pos=pos)
+        }
     }
     
     if (is.factor(group))

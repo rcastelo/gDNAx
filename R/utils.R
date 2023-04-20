@@ -33,12 +33,16 @@
 ## copied from GenomicAlignments:::.normarg_strandMode_replace_value()
 #' @importFrom S4Vectors isSingleNumber
 .checkStrandMode <- function(value) {
-    if (!isSingleNumber(value))
-        stop("invalid strand mode (must be 0, 1, or 2)")
-    if (!is.integer(value))
+    if (!is.na(value)) {
+        if (!isSingleNumber(value))
+            stop("invalid strand mode (must be 0, 1, or 2)")
+        if (!is.integer(value))
+            value <- as.integer(value)
+        if (!(value %in% 0:2))
+            stop("invalid strand mode (must be 0, 1, or 2)")
+    } else {
         value <- as.integer(value)
-    if (!(value %in% 0:2))
-        stop("invalid strand mode (must be 0, 1, or 2)")
+    }
 
     value
 }

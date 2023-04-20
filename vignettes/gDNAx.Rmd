@@ -63,7 +63,7 @@ The data is available through the `gDNAinRNAseqData` package. BAM files
 contain about 100,000 alignments, sampled uniformly at random from complete
 BAM files.
 
-```{r, message=FALSE, eval = FALSE}
+```{r, message=FALSE}
 library(gDNAinRNAseqData)
 
 # Retrieving BAM files
@@ -87,9 +87,9 @@ strand is that of the second alignment.
 Function `identifyStrandMode()` can be used to try to identify the library
 protocol used:
 ```{r, message=FALSE, warning=FALSE}
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 library(gDNAx)
 
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
 strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
@@ -110,7 +110,7 @@ strandM$Strandedness
 As we can see, the proportion of alignments overlapping
 transcripts when `strandMode = 1L` is used ("strandMode1" column) 
 is very similar to the one when `strandMode = 2L` is considered
-("strandMode2" column), which is compatible with an non-stranded library.
+("strandMode2" column), which is compatible with a non-stranded library.
 This contrasts with the reported stranded protocol used to obtain this data
 according to [@li2022genes]. However, the results obtained by
 `identifyStrandMode()` were contrasted with results of the RSeQC 
@@ -118,9 +118,11 @@ according to [@li2022genes]. However, the results obtained by
 in the Integrative Genomics Viewer (IGV) ([@robinson2011integrative]), all
 of which point to an unstranded RNA-seq experiment.
 
-On the other hand, the number of alignments used to compute strandedness is
-close to 60000, we and others [@signal2022how_are_we_stranded_here] recommend
-using a higher number (controlled with the `yieldSize` parameter).
+`identifyStrandMode()` uses 200,000 alignments overlapping exonic regions to
+compute strandedness (recommended by [@signal2022how_are_we_stranded_here]),
+unless the number of these kind of alignments in the BAM file is lower. 
+In this vignette, the number of alignments used is close to 60,000, which is
+the total number of exonic alignments present in the BAM files.
 
 ## Calculating and plotting diagnostics
 
@@ -130,13 +132,7 @@ file are considered to obtain these diagnostics. The number of alignments used
 is set by the `yieldSize` parameter.
 
 ```{r, message=FALSE}
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-library(gDNAx)
-
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-bams <- list.files(path, pattern="*.bam$", full.names=TRUE)
-
-gdnax <- gDNAdx(bams, txdb, singleEnd=FALSE, strandMode=2L)
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=strandM$strandMode)
 gdnax
 ```
 
@@ -151,6 +147,8 @@ Next, we can plot the previous gDNA diagnostic measures using the default
 `plot()` function. This creates four plot, each one representing a diagnostic
 measure as a function of the percentage of intergenic alignments, which can
 be considered the most informative measure regarding gDNA contamination levels.
+Here, strandedness values (STRAND column) are `NA` since the dataset is not
+strand-specific.
 
 ```{r defdiag, height=10, width=10, out.width="800px", fig.cap="Default diagnostics."}
 plot(gdnax, group=pdat$gDNA)
@@ -169,7 +167,7 @@ SCJ or SCE alignments.
 On the contrary, **intronic** (INT) alignments are positively correlated with
 IGC alignments and, thus, with gDNA contamination levels.
 
-Regarding the last plot, showing the strandedness value, in stranded RNA-seq
+The last plot shows the strandedness value. In stranded RNA-seq
 protocols, we expect a  strandedness value close to 1, meaning that
 most reads align to the same strand than the annotated transcripts. Lower
 strandedness values can be indicative of gDNA contamination: reads sequenced
@@ -177,7 +175,6 @@ from DNA are expected to align in equal proportions to both strands.
 Therefore, a low strandedness in a stranded RNA-seq experiment can be due to
 the presence of DNA reads (contamination) mapping to transcripts but in the
 opposite strand.
-
 
 Another plot to represent diagnostic measures is the one representing the 
 origin of alignments per sample. Fluctuations in this proportions

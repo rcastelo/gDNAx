@@ -48,6 +48,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     tx <- object@transcripts
     tx2gene <- object@tx2gene
 
+    if (is.na(strandMode))
+        strandMode <- 1L
+    
     if (!file.exists(path))
         stop(sprintf("path %s does not exist.", path))
 
@@ -199,14 +202,14 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         stats["NIGC"] <- sum(igcaln$igcmask)
     }
     if (testBAMtxFlag(txflag, "isIntronic")) {
-        intaln <- .intAlignments(gal, int, fragmentsLen=FALSE)
+        intaln <- .intAlignments(gal, int, strandMode, fragmentsLen=FALSE)
         mask <- mask | intaln$intmask
         whalnstr <- c(whalnstr, "INT")
         stats["NINT"] <- sum(intaln$intmask)
     }
     if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction") ||
         testBAMtxFlag(txflag, "isSpliceCompatibleExonic")) {
-        scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd,
+        scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
                                  fragmentsLen=FALSE)
         if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction")) {
             mask <- mask | scoaln$scjmask
