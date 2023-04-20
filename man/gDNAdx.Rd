@@ -37,13 +37,13 @@ short-read aligner software that generated the input BAM files.}
 \item{singleEnd}{(Default FALSE) Logical value indicating if reads are
 single (\code{TRUE}) or paired-end (\code{FALSE}).}
 
-\item{strandMode}{(Default 1) Numeric vector which can take values 0, 1 or
-2. The strand mode is a per-object switch on
+\item{strandMode}{(Default 1L) Numeric vector which can take values 0, 1,
+2 or \code{NA}. The strand mode is a per-object switch on
 \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 objects that controls the behavior of the strand getter. See
 \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
-is ignored.}
+is ignored. For not strand-specific libraries, use \code{NA}}
 
 \item{stdChrom}{(Default TRUE) Logical value indicating whether only
 alignments in the 'standard chromosomes' should be used. Consult the help

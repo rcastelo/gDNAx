@@ -118,3 +118,31 @@ setMethod("show", "gDNAx",
               cat(sprintf("# Annotation pkg: %s\n", object@txdbpkg))
               cat(sprintf("# Alignments employed: first %d\n", object@yieldSize))
           })
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @return \code{features()}: A \code{GRanges} object with intergenic ranges.
+#' 
+#' @export
+#' @aliases getIgc
+#' @aliases getIgc,gDNAx-method
+#' @rdname gDNAx-class
+#' @name getIgc
+setMethod("getIgc", "gDNAx",
+          function(x) {
+            x@intergenic
+          })
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @return \code{features()}: A \code{GRanges} object with intron ranges.
+#' 
+#' @export
+#' @aliases getInt
+#' @aliases getInt,gDNAx-method
+#' @rdname gDNAx-class
+#' @name getInt
+setMethod("getInt", "gDNAx",
+          function(x) {
+            x@intronic
+          })

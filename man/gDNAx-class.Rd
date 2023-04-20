@@ -7,16 +7,29 @@
 \alias{getDx,gDNAx-method}
 \alias{show,gDNAx-method}
 \alias{show}
+\alias{getIgc}
+\alias{getIgc,gDNAx-method}
+\alias{getInt}
+\alias{getInt,gDNAx-method}
 \title{gDNAx class}
 \usage{
 \S4method{getDx}{gDNAx}(x)
 
 \S4method{show}{gDNAx}(object)
+
+\S4method{getIgc}{gDNAx}(x)
+
+\S4method{getInt}{gDNAx}(x)
 }
 \arguments{
 \item{x}{A \linkS4class{gDNAx} object.}
 
 \item{object}{A \linkS4class{gDNAx} object.}
+}
+\value{
+\code{features()}: A \code{GRanges} object with intergenic ranges.
+
+\code{features()}: A \code{GRanges} object with intron ranges.
 }
 \description{
 This is a class for storing the results of a call to the
