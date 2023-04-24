@@ -469,29 +469,32 @@ function(x, group=1L, labelpoints=FALSE, ...) {
     group <- grp$group
     grpcol <- grp$col
 
-    par(mfrow=c(2, 2), mar=c(5, 5, 2, 2), xpd=FALSE)
+    # par(mfrow=c(3, 2), mar=c(5, 5, 2, 2), xpd=FALSE)
+    par(oma = c(4,1,1,1), mfrow=c(2, 2), mar=c(5, 5, 2, 2), xpd=FALSE)
     ## IGC x SCJ
-    plot(dx$IGC, dx$SCJ, pch=19, panel.first=grid(), las=1,
+    plot(dx$IGC, dx$SCJ, panel.first=grid(), las=1,
          xlab="Intergenic alignments (%)",
-         ylab="Splice-comp. junction aln. (%)", col=grpcol[as.integer(group)])
+         ylab="Splice-comp. junction aln. (%)", 
+         col=grpcol[as.integer(group)], ...)
     if (labelpoints) {
       pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
       text(dx$IGC, dx$SCJ+dx$SCE, as.character(1:nrow(dx)), cex=0.5, pos=pos)
     }
 
     ## IGC x SCE
-    plot(dx$IGC, dx$SCE, pch=19, panel.first=grid(), las=1,
+    plot(dx$IGC, dx$SCE, panel.first=grid(), las=1,
          xlab="Intergenic alignments (%)",
-         ylab="Splice-comp. exonic aln. (%)", col=grpcol[as.integer(group)])
+         ylab="Splice-comp. exonic aln. (%)", 
+         col=grpcol[as.integer(group)], ...)
     if (labelpoints) {
       pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
       text(dx$IGC, dx$SCJ+dx$SCE, as.character(1:nrow(dx)), cex=0.5, pos=pos)
     }
 
     ## IGC x INT
-    plot(dx$IGC, dx$INT, pch=19, panel.first=grid(), las=1,
+    plot(dx$IGC, dx$INT, panel.first=grid(), las=1,
          xlab="Intergenic alignments (%)",
-         ylab="Intronic alignments (%)", col=grpcol[as.integer(group)])
+         ylab="Intronic alignments (%)", col=grpcol[as.integer(group)], ...)
     if (labelpoints) {
       pos <- setNames(thigmophobe(dx$IGC, dx$INT), rownames(x))
       text(dx$IGC, dx$INT, as.character(1:nrow(dx)), cex=0.5, pos=pos)
@@ -501,18 +504,24 @@ function(x, group=1L, labelpoints=FALSE, ...) {
     yrng <- range(dx$SCE)
     ## STRANDEDNESS
     if (!all(is.na(dx$STRAND))) {
-        plot(dx$IGC, dx$STRAND, pch=19, panel.first=grid(), las=1,
+        plot(dx$IGC, dx$STRAND, panel.first=grid(), las=1,
              xlab="Intergenic alignments (%)",
-             ylab="Strandedness", col=grpcol[as.integer(group)])
+             ylab="Strandedness", col=grpcol[as.integer(group)], ...)
         if (labelpoints) {
             pos <- setNames(thigmophobe(dx$IGC, dx$STRAND), rownames(x))
             text(dx$IGC, dx$STRAND, as.character(1:nrow(dx)), cex=0.5, pos=pos)
         }
     }
     
-    if (is.factor(group))
-      legend("topleft", levels(group), col=grpcol, pch=19, inset=c(-0.3,-0.7),
-             bg="white", xpd=NA)
+    if (is.factor(group)) {
+      # legend("topleft", levels(group), col=grpcol, pch=19, inset=c(-0.3,-0.7),
+      #        bg="white", xpd=NA)
+      par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), 
+          new = TRUE)
+      plot(0, 0, type = 'l', bty = 'n', xaxt = 'n', yaxt = 'n')
+      legend("bottom", levels(group), col=grpcol, pch=19, inset=0,
+             bg="white", xpd=NA, horiz = TRUE)
+    }
 
 })
 
