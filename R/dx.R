@@ -128,12 +128,18 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     scjfrglen.mean <- sapply(dxBAMs, function(x) mean(x$scjfrglen))
     scefrglen.mean <- sapply(dxBAMs, function(x) mean(x$scefrglen))
     strness <- sapply(dxBAMs, function(x) x$strness)
+    
+    snames <- gsub(".bam", "", names(igcpct))
+    if (any(duplicated(snames))) {
+        stopifnot(identical(names(bfl), snames))
+        snames <- path(bfl)
+    }
     dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct,
                      SCC=sccpct,
                      IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
                      SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
                      STRAND=strness,
-                     row.names=gsub(".bam", "", names(igcpct)))
+                     row.names=snames)
     igcfrglen <- lapply(dxBAMs, function(x) x$igcfrglen)
     intfrglen <- lapply(dxBAMs, function(x) x$intfrglen)
     scjfrglen <- lapply(dxBAMs, function(x) x$scjfrglen)

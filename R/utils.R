@@ -14,6 +14,10 @@
         if (any(!mask))
             stop(sprintf("The following input BAM files cannot be found:\n%s",
                         paste(paste("  ", bfl[!mask]), collapse="\n")))
+        if (any(duplicated(bfl)))
+            stop(sprintf("The following input BAM files are duplicated:\n%s",
+                         paste(paste("  ", bfl[duplicated(bfl)]),
+                               collapse="\n")))
     }
     
     if (!is(bfl, "BamFileList"))
