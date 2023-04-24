@@ -131,7 +131,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     
     snames <- gsub(".bam", "", names(igcpct))
     if (any(duplicated(snames))) {
-        stopifnot(identical(names(bfl), snames))
+        stopifnot(identical(names(bfl),  names(igcpct)))
         snames <- path(bfl)
     }
     dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct,
