@@ -151,7 +151,7 @@ Here, strandedness values (STRAND column) are `NA` since the dataset is not
 strand-specific.
 
 ```{r defdiag, height=10, width=10, out.width="800px", fig.cap="Default diagnostics."}
-plot(gdnax, group=pdat$gDNA)
+plot(gdnax, group=pdat$gDNA, pch=19)
 ```
 
 **Splice-compatible junction** (SCJ) alignments (spliced alignments overlapping 
