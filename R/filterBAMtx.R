@@ -48,8 +48,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     tx <- object@transcripts
     tx2gene <- object@tx2gene
 
-    if (is.na(strandMode))
-        strandMode <- 1L
+    # if (is.na(strandMode))
+    #     strandMode <- 1L
     
     if (!file.exists(path))
         stop(sprintf("path %s does not exist.", path))
@@ -186,8 +186,11 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (!singleEnd) {
         use.mcols <- setdiff(c(bamWhat(param), bamTag(param)),
                              c("rname", "pos", "cigar", "strand"))
+        strandMode2 <- strandMode
+        if (is.na(strandMode))
+            strandMode2 <- 1L
         makeGALP <- GenomicAlignments:::.make_GAlignmentPairs_from_GAlignments
-        gal <- makeGALP(gal, strandMode, use.mcols=use.mcols)
+        gal <- makeGALP(gal, strandMode2, use.mcols=use.mcols)
     }
     if (stdChrom)
         gal <- keepStandardChromosomes(gal, pruning.mode="fine")
