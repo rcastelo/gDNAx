@@ -193,6 +193,18 @@ paired-end data.
 plotFrgLength(gdnax)
 ```
 
+## Accessing annotations
+
+The annotations of intergenic and intronic regions used to compute these
+diagnostics can easily be obtain using two different functions: `getIgc()` and
+`getInt`, respectively. For instance, let's retrieve intergenic annotations:
+
+```{r}
+igc <- getIgc(gdnax)
+head(igc, n=3)
+```
+
+
 # Filter alignments according to an annotation
 
 The package also provides functions to filter splice-compatible alignments
