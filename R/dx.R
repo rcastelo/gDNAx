@@ -70,7 +70,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
 
     minfrglen <- .minFrgLen(bfl, singleEnd)
-    igcintrng <- .fetchIGCandINTrng(txdb, minfrglen, stdChrom)
+    igcintrng <- .fetchIGCandINTrng(txdb, minfrglen, stdChrom, strandMode)
 
     ## fetch transcript annotations
     exbytx <- exonsBy(txdb, by="tx")
@@ -375,7 +375,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom GenomicRanges strand strand<- gaps intersect width
 #' @importFrom AnnotationHub AnnotationHub query
-.fetchIGCandINTrng <- function(txdb, minfrglen, stdChrom) {
+.fetchIGCandINTrng <- function(txdb, minfrglen, stdChrom, strandMode) {
 
     ## fetch ranges of annotated genes, discard
     ## gene information and project them into
@@ -385,7 +385,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     ## exons on different strands. range() will
     ## calculate boundaries separately for each
     ## different sequence
-    exbygn <- exonsBy(txdb, by="gene")
+    # exbygn <- exonsBy(txdb, by="gene")
+    exbygn <- exonsBy(txdb, by="tx")
     if (stdChrom) ## important to use 'pruning.mode="fine"' here
         exbygn <- keepStandardChromosomes(exbygn, pruning.mode="fine")
     exbygnrng <- unlist(range(exbygn), use.names=FALSE)
@@ -414,6 +415,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     ## pintrons <- sort(intersect(gaps(pexbygn), exbygnrng))
     gnrmskrng <- sort(c(unlist(reduce(exbygn), use.names=FALSE), rmskrng))
     pintrons <- sort(intersect(gaps(gnrmskrng), exbygnrng))
+    if (is.na(strandMode))
+        pintrons <- setdiff(pintrons, gnrmskrng, ignore.strand=TRUE)
     if (stdChrom)
         pintrons <- keepStandardChromosomes(pintrons, pruning.mode="coarse")
     pintrons <- pintrons[width(pintrons) >= minfrglen]
