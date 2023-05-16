@@ -373,7 +373,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom IRanges reduce
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
-#' @importFrom GenomicRanges strand strand<- gaps intersect width
+#' @importFrom GenomicRanges strand strand<- gaps intersect width setdiff
 #' @importFrom AnnotationHub AnnotationHub query
 .fetchIGCandINTrng <- function(txdb, minfrglen, stdChrom, strandMode) {
 
