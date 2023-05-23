@@ -288,3 +288,158 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 
 
 
+#' Compute strandedness for each feature
+#'
+#' Compute strandedness for each feature in RNA-seq data samples based on
+#' the proportion of reads aligning to the same strand as feature annotations
+#' in relation to the total number of reads aligning to that feature.
+#'
+#' @param bfl A \code{BamFile} or \code{BamFileList} object, or a character
+#' string vector of BAM filenames.
+#'
+#' @param features A \code{GRanges} or \code{GRangesList} object with
+#' annotations of features (e.g. genes, transcripts, etc.).
+#'
+#' @param singleEnd (Default FALSE) Logical value indicating if reads are
+#' single (\code{TRUE}) or paired-end (\code{FALSE}).
+#' 
+#' @param strandMode (Default 1L) Numeric vector which can take values 0, 1,
+#' or 2. The strand mode is a per-object switch on
+#' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+#' objects that controls the behavior of the strand getter. See
+#' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+#' class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
+#' is ignored.
+#'
+#' @param yieldSize (Default 5e5) Field inherited from
+#' \code{\link[Rsamtools]{BamFile}}. The BAM is read by chunks.
+#' \code{yieldSize} represents the number of records to read for each chunk.
+#'
+#' @param verbose (Default TRUE) Logical value indicating if progress should be
+#' reported through the execution of the code.
+#'
+#' @param BPPARAM An object of a \linkS4class{BiocParallelParam} subclass
+#' to configure the parallel execution of the code. By default, a
+#' \linkS4class{SerialParam} object is used, which does not use any
+#' parallelization, with the flag \code{progress=TRUE} to show progress
+#' through the calculations.
+#'
+#' @return A \linkS4class{SummarizedExperiment} with three assays:
+#' \itemize{
+#'   \item "strness": contains strandedness values for each feature and sample.
+#'   \item "counts": number of reads aligning to each feature on the same 
+#'          strand (according to \code{strandMode}).
+#'   \item "counts_invstrand": number of reads aligning to each feature but on 
+#'          the opposite strand (according to \code{strandMode}).
+#' }
+#' 
+#' @details
+#' Strandedness is computed for each feature and BAM file according to the
+#' \code{strandMode} specified in case of paired-end data. For single-end,
+#' the original strand of reads is used. All alignments from the BAM file(s) 
+#' are considered to compute the strandedness.
+#' 
+#' 
+#' @importFrom Rsamtools scanBamFlag ScanBamParam
+#' @importFrom BiocParallel SerialParam bplapply bpnworkers
+#' @importFrom SummarizedExperiment SummarizedExperiment
+#' @importFrom methods is
+#' @export
+#' @rdname strnessByFeature
+strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
+                             yieldSize=1000000L, verbose=TRUE,
+                             BPPARAM=SerialParam(progressbar=verbose)) {
+  
+    yieldSize <- .checkYieldSize(yieldSize)
+    bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
+    
+    if (is.na(strandMode))
+        stop("invalid strand mode (must be 0, 1, or 2)")
+    
+    strandMode <- .checkStrandMode(strandMode)
+    
+    if (!is(features, "GRanges") && !is(features, "GRangesList"))
+        stop("'features' object should be either a 'GRanges' or a 'GRangesList' object.")
+    
+    sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
+                           isProperPair=!singleEnd,
+                           isSecondaryAlignment=FALSE,
+                           isDuplicate=FALSE,
+                           isNotPassingQualityControls=FALSE)
+    param <- ScanBamParam(flag=sbflags)
+    
+    if (verbose)
+        message("Start processing BAM file(s)")
+    
+    strbysm <- NULL
+    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
+        verbose <- FALSE
+        strnessByF <- bplapply(bfl, .strnessByF_oneBAM, features=features,
+                              singleEnd=singleEnd, strandMode=strandMode,
+                              param=param, verbose=verbose, BPPARAM=BPPARAM)
+    } else
+        strnessByF <- lapply(bfl, .strnessByF_oneBAM, features=features,
+                            singleEnd=singleEnd, strandMode=strandMode,
+                            param=param, verbose=verbose)
+    
+      names(strnessByF) <- gsub(pattern = ".bam", "", names(strnessByF), fixed = TRUE)
+      strness <- do.call("cbind", lapply(strnessByF, function(x) x$strness))
+      ov_c <- do.call("cbind", lapply(strnessByF, function(x) x$ov_c))
+      ov_cinvs <- do.call("cbind", lapply(strnessByF, function(x) x$ov_cinvs))
+      
+      strnessByF_se <- SummarizedExperiment(assays=list(strness=strness, 
+                                                        counts=ov_c, 
+                                                        counts_invstrand=ov_cinvs),
+                                            rowRanges=features)
+      strnessByF_se
+}
+
+## Private function to issue a warning when the strandedness value is
+## computed from a low number of alignments
+#' @importFrom S4Vectors Hits countQueryHits countSubjectHits queryHits
+#' @importFrom GenomicAlignments readGAlignmentPairs readGAlignments
+#' @importFrom GenomicAlignments readGAlignmentsList findOverlaps invertStrand
+#' @importFrom methods formalArgs
+.strnessByF_oneBAM <- function(bf, features, singleEnd, strandMode=1L,
+                               param, verbose) {
+    if (isOpen(bf))
+        close(bf)
+    
+    readfun <- .getReadFunction(singleEnd, fragments = FALSE)
+    strand_arg <- "strandMode" %in% formalArgs(readfun)
+    ov <- Hits(nLnode=0, nRnode=length(features), sort.by.query=TRUE)
+    ovinvs <- Hits(nLnode=0, nRnode=length(features), sort.by.query=TRUE)
+    
+    open(bf)
+    on.exit(close(bf))
+    while (length(gal <- do.call(readfun,
+                                 c(list(file = bf), list(param=param),
+                                   list(strandMode=strandMode)[strand_arg])))) {
+        gal <- .matchSeqinfo(gal, features, verbose)
+        
+        ## Finding overlaps using ovUnion method
+        thisov <- findOverlaps(gal, features, ignore.strand=FALSE)
+        thisovinvs <- findOverlaps(invertStrand(gal), features, ignore.strand=FALSE)
+        
+        ## Remove ambigous reads
+        r_to_keep <- which(countQueryHits(thisov) == 1L)
+        thisov <- thisov[queryHits(thisov) %in% r_to_keep]
+        r_to_keepinvs <- which(countQueryHits(thisovinvs) == 1L)
+        thisovinvs <- thisovinvs[queryHits(thisovinvs) %in% r_to_keepinvs]
+        
+        ov <- .appendHits(ov, thisov)
+        ovinvs <- .appendHits(ov, thisovinvs)
+    }
+    
+    ov_c <- countSubjectHits(ov)
+    ov_cinvs <- countSubjectHits(ovinvs)
+    
+    wh <- which((ov_c + ov_cinvs) > 0)
+    strness <- numeric(length(features))
+    strness[wh] <- ov_c[wh] / (ov_c[wh] + ov_cinvs[wh])
+    strnessByF <- list(strness = strness, ov_c = ov_c, ov_cinvs = ov_cinvs)
+    strnessByF
+}
+
+
+
