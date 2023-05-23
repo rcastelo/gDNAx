@@ -528,7 +528,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
       par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), 
           new = TRUE)
       plot(0, 0, type = 'l', bty = 'n', xaxt = 'n', yaxt = 'n')
-      legend("bottom", levels(group), col=grpcol, pch=19, inset=0,
+      legend("bottom", levels(group), fill=grpcol, inset=0,
              bg="white", xpd=NA, horiz = TRUE)
     }
 
