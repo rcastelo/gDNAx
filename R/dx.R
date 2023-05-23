@@ -202,15 +202,24 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 
     ## intergenic alignments
     igcaln <- .igcAlignments(gal, igc,fragmentsLen=TRUE,nfrgs=1000)
-    nigcaln <- sum(igcaln$igcmask)
 
     ## intronic alignments
     intaln <- .intAlignments(gal, int, strandMode,fragmentsLen=TRUE,nfrgs=1000)
-    nintaln <- sum(intaln$intmask)
 
     ## splice-compatible alignments
     scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
                              fragmentsLen=TRUE, nfrgs=1000)
+    
+    ## Assigning reads simultaneously identified as IGC/INT and SCE/SCJ
+    ## as SCE/SCJ
+    whigc <- (igcaln$igcmask & scoaln$scjmask) | (igcaln$igcmask & scoaln$scemask)
+    igcaln$igcmask[whigc] <- FALSE
+
+    whint <- (intaln$intmask & scoaln$scjmask) | (intaln$intmask & scoaln$scemask)
+    intaln$intmask[whint] <- FALSE
+
+    nigcaln <- sum(igcaln$igcmask)
+    nintaln <- sum(intaln$intmask)
     nscjaln <- sum(scoaln$scjmask)
     nscealn <- sum(scoaln$scemask)
     nsccaln <- sum(scoaln$sccmask)
@@ -385,8 +394,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     ## exons on different strands. range() will
     ## calculate boundaries separately for each
     ## different sequence
-    # exbygn <- exonsBy(txdb, by="gene")
-    exbygn <- exonsBy(txdb, by="tx")
+    exbygn <- exonsBy(txdb, by="gene")
     if (stdChrom) ## important to use 'pruning.mode="fine"' here
         exbygn <- keepStandardChromosomes(exbygn, pruning.mode="fine")
     exbygnrng <- unlist(range(exbygn), use.names=FALSE)
