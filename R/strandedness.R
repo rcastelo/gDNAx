@@ -400,6 +400,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
 #' @importFrom GenomicAlignments readGAlignmentPairs readGAlignments
 #' @importFrom GenomicAlignments readGAlignmentsList findOverlaps invertStrand
 #' @importFrom methods formalArgs
+#' @importFrom GenomeInfoDb seqlevelsStyle
 .strnessByF_oneBAM <- function(bf, features, singleEnd, strandMode=1L,
                                param, verbose) {
     if (isOpen(bf))
@@ -415,11 +416,12 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     while (length(gal <- do.call(readfun,
                                  c(list(file = bf), list(param=param),
                                    list(strandMode=strandMode)[strand_arg])))) {
-        gal <- .matchSeqinfo(gal, features, verbose)
+        # gal <- .matchSeqinfo(gal, features, verbose)
+        seqlevelsStyle(gal) <- seqlevelsStyle(features)[1]
         
         ## Finding overlaps using ovUnion method
-        thisov <- findOverlaps(gal, features, ignore.strand=FALSE)
-        thisovinvs <- findOverlaps(invertStrand(gal), features, ignore.strand=FALSE)
+        suppressWarnings(thisov <- findOverlaps(gal, features, ignore.strand=FALSE))
+        suppressWarnings(thisovinvs <- findOverlaps(invertStrand(gal), features, ignore.strand=FALSE))
         
         ## Remove ambigous reads
         r_to_keep <- which(countQueryHits(thisov) == 1L)
@@ -428,7 +430,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
         thisovinvs <- thisovinvs[queryHits(thisovinvs) %in% r_to_keepinvs]
         
         ov <- .appendHits(ov, thisov)
-        ovinvs <- .appendHits(ov, thisovinvs)
+        ovinvs <- .appendHits(ovinvs, thisovinvs)
     }
     
     ov_c <- countSubjectHits(ov)
