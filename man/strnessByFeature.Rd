@@ -10,6 +10,8 @@ strnessByFeature(
   singleEnd = TRUE,
   strandMode = 1L,
   yieldSize = 1000000L,
+  ambiguous = FALSE,
+  p = 0.6,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -35,6 +37,15 @@ is ignored.}
 \item{yieldSize}{(Default 5e5) Field inherited from
 \code{\link[Rsamtools]{BamFile}}. The BAM is read by chunks.
 \code{yieldSize} represents the number of records to read for each chunk.}
+
+\item{ambiguous}{(Default FALSE) Logical value indicating if reads that
+overlap a region with features annotated to both strands should be included
+in the strandedness value computation.}
+
+\item{p}{(Default 0.6) Numeric value for the exact binomial test performed
+for the strandedness value of each feature, representing the hypothesized
+probability of success (i.e. the strandedness value expected for a 
+non-stranded dataset).}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
@@ -65,4 +76,24 @@ Strandedness is computed for each feature and BAM file according to the
 \code{strandMode} specified in case of paired-end data. For single-end,
 the original strand of reads is used. All alignments from the BAM file(s) 
 are considered to compute the strandedness.
+
+The \code{p} value should be close to 0.5, representing the strandedness
+expected for a non-stranded RNA-seq library.
+
+#' @examples
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+features <- range(exonsBy(txdb, by="gene"))
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+sByFeature <- strnessByFeature(bamfiles, features, singleEnd=FALSE,
+                            strandMode=2L)
+sByFeature
 }

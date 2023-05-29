@@ -26,6 +26,29 @@
 #' through the calculations.
 #'
 #' @return A vector of output filename paths.
+#' 
+#' @examples
+#' \donttest{
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' 
+#' # Filtering splice-compatible alignments and writing them into new BAM files
+#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+#'                        isSpliceCompatibleExonic=TRUE)
+#' fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
+#' list.files(".", pattern="*.bam$")
+#' }
+#' 
 #'
 #' @importFrom S4Vectors mcols
 #' @importFrom Rsamtools BamFileList scanBamFlag ScanBamParam
@@ -56,20 +79,20 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
     if (txflag == 0)
         stop(paste("No alignment type selected in argument 'txflag'. Please",
-                   "use the function 'filterBAMtxFlag()' to select at least",
-                   "one.", sep=" "))
+                    "use the function 'filterBAMtxFlag()' to select at least",
+                    "one.", sep=" "))
 
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- lapply(bfl, function(x, ys) {
-                           yieldSize(x) <- ys
-                           x
+                            yieldSize(x) <- ys
+                            x
                         }, yieldSize)
 
     flag0 <- scanBamFlag(isUnmappedQuery=FALSE)
     what0 <- c("rname", "strand", "pos", "cigar", "qname")
     if (singleEnd)
         bamWhat(param) <- setdiff(bamWhat(param),
-                                  c("groupid", "mate_status"))
+                                    c("groupid", "mate_status"))
     else {
         flag0 <- scanBamFlag(isPaired=TRUE, hasUnmappedMate=FALSE,
                              isUnmappedQuery=FALSE)
@@ -84,10 +107,10 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
         out.stats <- bplapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
-                              path=path, txflag=txflag, singleEnd=singleEnd,
-                              strandMode=strandMode, stdChrom=stdChrom,
-                              tx2gene=tx2gene, param=param, verbose=verbose,
-                              BPPARAM=BPPARAM)
+                            path=path, txflag=txflag, singleEnd=singleEnd,
+                            strandMode=strandMode, stdChrom=stdChrom,
+                            tx2gene=tx2gene, param=param, verbose=verbose,
+                            BPPARAM=BPPARAM)
     } else
         out.stats <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
                             path=path, txflag=txflag, singleEnd=singleEnd,
@@ -102,25 +125,25 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom S4Vectors FilterRules
 #' @importFrom Rsamtools filterBam
 .filter_oneBAMtx <- function(bf, igc, int, tx, path, txflag, singleEnd,
-                             strandMode, stdChrom, tx2gene, param, verbose) {
+                            strandMode, stdChrom, tx2gene, param, verbose) {
 
     onesuffix <- c(isIntergenic="IGC",
-                   isIntronic="INT",
-                   isSpliceCompatibleJunction="SCJ",
-                   isSpliceCompatibleExonic="SCE")
+                    isIntronic="INT",
+                    isSpliceCompatibleJunction="SCJ",
+                    isSpliceCompatibleExonic="SCE")
     suffix <- "_"
     for (flag in TXFLAG_BITNAMES)
         if (testBAMtxFlag(txflag, flag))
             suffix <- paste0(suffix, onesuffix[flag])
 
     bamoutfile <- sprintf("%s/%s.bam", path,
-                          paste0(gsub(".bam", "", basename(path(bf))), suffix))
+                        paste0(gsub(".bam", "", basename(path(bf))), suffix))
     baioutfile <- sprintf("%s/%s.bai", path,
-                          paste0(gsub(".bam", "", basename(path(bf))), suffix))
+                        paste0(gsub(".bam", "", basename(path(bf))), suffix))
     statsenvname <- sprintf("stats_%s", gsub(".bam", "", basename(path(bf))))
     assign(statsenvname, new.env())
     assign("stats", c(NALN=0L, NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L),
-           env=get(statsenvname))
+            envir=get(statsenvname))
 
     if (verbose)
         message(sprintf("Processing %s", basename(path(bf))))
@@ -131,7 +154,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     file.remove(ff)
     file.copy(paste0(ff, ".bai"), baioutfile)
     file.remove(paste0(ff, ".bai"))
-    stats <- get("stats", env=get(statsenvname))
+    stats <- get("stats", envir=get(statsenvname))
     for (flag in TXFLAG_BITNAMES)
         if (!testBAMtxFlag(txflag, flag))
             stats[paste0("N", onesuffix[flag])] <- NA_integer_
@@ -143,10 +166,10 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom GenomeInfoDb seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
-    n <- 5 ## this number is derived from the fact that .scj_filter()
-           ## is called by 'eval()' within the 'filterBam()' function
-           ## and allows one to access the objects in the scope of
-           ## .filter_oneBAMtx() through the environment 'parent.frame(n)'
+    n <- 5  ## this number is derived from the fact that .scj_filter()
+            ## is called by 'eval()' within the 'filterBam()' function
+            ## and allows one to access the objects in the scope of
+            ## .filter_oneBAMtx() through the environment 'parent.frame(n)'
     bf <- get("bf", envir=parent.frame(n))
     param <- get("param", envir=parent.frame(n))
     txflag <- get("txflag", envir=parent.frame(n))
@@ -162,22 +185,22 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     statsenv <- get(statsenvname, envir=parent.frame(n))
     seqlengths <- seqlengths(bf)
     if (!is.null(seqlengths)) {
-      bad <- setdiff(levels(x$rname), names(seqlengths))
-      if (length(bad) > 0) {
-          bad <- paste(bad, collapse="' '")
-          msg <- sprintf(paste("'rname' lengths not in BamFile header;",
-                               "seqlengths not used\n  file: %s\n  missing",
-                               "rname(s): '%s'", sep=" "), path(bf), bad)
-          warning(msg)
-          seqlengths <- NULL
-      }
+        bad <- setdiff(levels(x$rname), names(seqlengths))
+        if (length(bad) > 0) {
+            bad <- paste(bad, collapse="' '")
+            msg <- sprintf(paste("'rname' lengths not in BamFile header;",
+                                "seqlengths not used\n  file: %s\n  missing",
+                                "rname(s): '%s'", sep=" "), path(bf), bad)
+            warning(msg)
+            seqlengths <- NULL
+        }
     }
     gal <- GAlignments(seqnames=x$rname, pos=x$pos,
-                       cigar=x$cigar, strand=x$strand,
-                       seqlengths=seqlengths)
+                        cigar=x$cigar, strand=x$strand,
+                        seqlengths=seqlengths)
     stopifnot(nrow(x) == length(gal)) ## QC
     cnames <- setdiff(c(bamWhat(param), bamTag(param)),
-                      c("rname", "pos", "cigar", "strand"))
+                        c("rname", "pos", "cigar", "strand"))
     if (length(cnames) > 0) {
         dtf <- do.call(DataFrame, as.list(x[cnames]))
         colnames(dtf) <- cnames
@@ -185,7 +208,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     }
     if (!singleEnd) {
         use.mcols <- setdiff(c(bamWhat(param), bamTag(param)),
-                             c("rname", "pos", "cigar", "strand"))
+                            c("rname", "pos", "cigar", "strand"))
         strandMode2 <- strandMode
         if (is.na(strandMode))
             strandMode2 <- 1L
@@ -213,7 +236,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction") ||
         testBAMtxFlag(txflag, "isSpliceCompatibleExonic")) {
         scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
-                                 fragmentsLen=FALSE)
+                                fragmentsLen=FALSE)
         if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction")) {
             mask <- mask | scoaln$scjmask
             whalnstr <- c(whalnstr, "SCJ")
@@ -225,9 +248,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
             stats["NSCE"] <- sum(scoaln$scemask)
         }
     }
-    envstats <- get("stats", env=statsenv)
+    envstats <- get("stats", envir=statsenv)
     envstats <- envstats + stats
-    assign("stats", envstats, env=statsenv)
+    assign("stats", envstats, envir=statsenv)
 
     if (verbose)
         message(sprintf("%d alignments processed, %d (%.2f%%) %s written",
@@ -242,9 +265,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 }
 
 TXFLAG_BITNAMES <- c("isIntergenic",
-                     "isIntronic",
-                     "isSpliceCompatibleJunction",
-                     "isSpliceCompatibleExonic")
+                    "isIntronic",
+                    "isSpliceCompatibleJunction",
+                    "isSpliceCompatibleExonic")
 
 ## adapted from Rsamtools::scanBamFlag()
 
@@ -276,6 +299,25 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #' @param isIntergenic (Default FALSE) Logical value indicating if alignments
 #'        aligned to intergenic regions should be included in the BAM file.
 #'
+#'
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' 
+#' # Filtering splice-compatible alignments and writing them into new BAM files
+#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+#'                        isSpliceCompatibleExonic=TRUE)
+#' 
 #' @export
 #' @rdname filterBAMtx
 filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
@@ -285,7 +327,7 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
     flag <- S4Vectors:::makePowersOfTwo(length(TXFLAG_BITNAMES))
     names(flag) <- TXFLAG_BITNAMES
     args <- lapply(as.list(match.call())[-1], eval, parent.frame())
-    if (any(sapply(args, length) > 1L))               
+    if (any(vapply(args, length, FUN.VALUE = integer(1L)) > 1L))               
         stop("all arguments must be logical(1)")
 
     if (length(args) == 0)
@@ -309,7 +351,7 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
 testBAMtxFlag <- function(flag, value) {
     if (length(value) != 1 || !value %in% TXFLAG_BITNAMES) {
         msg <- sprintf("'is' must be character(1) in '%s'",
-                       paste(TXFLAG_BITNAMES, collapse="' '"))
+                        paste(TXFLAG_BITNAMES, collapse="' '"))
         stop(msg)
     }
     i <- 2 ^ (match(value, TXFLAG_BITNAMES) - 1L)

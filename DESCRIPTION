@@ -1,16 +1,16 @@
 Package: gDNAx
 Type: Package
 Title: Diagnostics for assessing genomic DNA contamination in RNA-seq data
-Version: 0.99.5
+Version: 0.99.6
 Authors@R: c(
   person("Beatriz", "Calvo-Serra", email = "beatriz.calvo@upf.edu", role = c("aut","cre")),
   person("Robert", "Castelo", email = "robert.castelo@upf.edu", role = c("aut")))
-Description: Provide diagnostics for assessing genomic DNA contamination in
-    RNA-seq data.
+Description: Provides diagnostics for assessing genomic DNA contamination in
+    RNA-seq data, as well as plots representing these diagnostics. Moreover, the package can be used to get an insight into the strand library protocol used and, in case of strand-specific libraries, the strandedness of the data. Furthermore, it provides functionality to filter out reads of potential gDNA origin.
 License: Artistic-2.0
 Encoding: UTF-8
 Depends:
-    R (>= 4.1)
+    R (>= 4.2)
 Imports: 
     methods,
     BiocGenerics,
@@ -29,7 +29,11 @@ Imports:
     AnnotationDbi,
     bitops,
     plotrix,
-    SummarizedExperiment
+    SummarizedExperiment,
+    grDevices,
+    graphics,
+    stats,
+    utils
 Suggests:
     BiocStyle,
     knitr,
@@ -37,7 +41,7 @@ Suggests:
     RUnit,
     TxDb.Hsapiens.UCSC.hg38.knownGene,
     gDNAinRNAseqData
-biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics
+biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics, SplicedAlignment
 VignetteBuilder: knitr
 RoxygenNote: 7.2.3
 Collate:

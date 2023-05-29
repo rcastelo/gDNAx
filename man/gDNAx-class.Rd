@@ -30,6 +30,22 @@
 \code{features()}: A \code{GRanges} object with intergenic ranges.
 
 \code{features()}: A \code{GRanges} object with intron ranges.
+
+#' @examples
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+int <- getInt(gdnax)
+head(int, n=3)
 }
 \description{
 This is a class for storing the results of a call to the
@@ -92,3 +108,63 @@ annotations.}
 transcripts and genes according to an 'TxDb' object.}
 }}
 
+\examples{
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+gdnax
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+dx <- getDx(gdnax)
+head(dx)
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+gdnax
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+igc <- getIgc(gdnax)
+head(igc, n=3)
+
+}

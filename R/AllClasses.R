@@ -56,11 +56,26 @@
 #' @slot tx2gene A string character vector storing the correspondence between
 #' transcripts and genes according to an 'TxDb' object.
 #'
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' gdnax
+#'
 #' @name gDNAx-class
 #' @rdname gDNAx-class
 #' @exportClass gDNAx
 setClass("gDNAx",
-         representation(bfl="BamFileList",
+        representation(bfl="BamFileList",
                         txdbpkg="character",
                         singleEnd="logical",
                         strandMode="integer",
@@ -80,18 +95,49 @@ setClass("gDNAx",
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' dx <- getDx(gdnax)
+#' head(dx)
+#'
 #' @export
 #' @aliases getDx
 #' @aliases getDx,gDNAx-method
 #' @rdname gDNAx-class
 #' @name getDx
 setMethod("getDx", "gDNAx",
-          function(x) {
-            x@diagnostics
-          })
+            function(x) {
+              x@diagnostics
+            })
 
 #' @param object A \linkS4class{gDNAx} object.
 #'
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' gdnax
+#' 
 #' @importFrom methods show
 #' 
 #' @export
@@ -99,29 +145,46 @@ setMethod("getDx", "gDNAx",
 #' @aliases show,gDNAx-method
 #' @rdname gDNAx-class
 setMethod("show", "gDNAx",
-          function(object) {
-              cat(class(object), "object\n")
-              cat(sprintf("# BAM files (%d): %s\n", length(object@bfl),
-                          .pprintnames(names(object@bfl))))
-              if (object@singleEnd)
-                  cat(sprintf("# Library layout: single-end (%dnt)\n",
-                              object@readLength))
-              else {
-                  cat(sprintf("# Library layout: paired-end (2x%dnt)\n",
-                              object@readLength))
-                  cat(sprintf("# Strand mode: %d\n", object@strandMode))
-              }
-              if (object@stdChrom)
-                  cat("# Sequences: only standard chromosomes\n")
-              else
-                  cat("# Sequences: all\n")
-              cat(sprintf("# Annotation pkg: %s\n", object@txdbpkg))
-              cat(sprintf("# Alignments employed: first %d\n", object@yieldSize))
-          })
+            function(object) {
+                cat(class(object), "object\n")
+                cat(sprintf("# BAM files (%d): %s\n", length(object@bfl),
+                            .pprintnames(names(object@bfl))))
+                if (object@singleEnd)
+                    cat(sprintf("# Library layout: single-end (%dnt)\n",
+                                object@readLength))
+                else {
+                    cat(sprintf("# Library layout: paired-end (2x%dnt)\n",
+                                object@readLength))
+                    cat(sprintf("# Strand mode: %d\n", object@strandMode))
+                }
+                if (object@stdChrom)
+                    cat("# Sequences: only standard chromosomes\n")
+                else
+                    cat("# Sequences: all\n")
+                cat(sprintf("# Annotation pkg: %s\n", object@txdbpkg))
+                cat(sprintf("# Alignments employed: first %d\n",
+                            object@yieldSize))
+            })
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
 #' @return \code{features()}: A \code{GRanges} object with intergenic ranges.
+#' 
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' igc <- getIgc(gdnax)
+#' head(igc, n=3)
 #' 
 #' @export
 #' @aliases getIgc
@@ -129,13 +192,29 @@ setMethod("show", "gDNAx",
 #' @rdname gDNAx-class
 #' @name getIgc
 setMethod("getIgc", "gDNAx",
-          function(x) {
-            x@intergenic
-          })
+            function(x) {
+              x@intergenic
+            })
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
 #' @return \code{features()}: A \code{GRanges} object with intron ranges.
+#' 
+#' #' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' int <- getInt(gdnax)
+#' head(int, n=3)
 #' 
 #' @export
 #' @aliases getInt
@@ -143,6 +222,6 @@ setMethod("getIgc", "gDNAx",
 #' @rdname gDNAx-class
 #' @name getInt
 setMethod("getInt", "gDNAx",
-          function(x) {
-            x@intronic
-          })
+            function(x) {
+              x@intronic
+            })

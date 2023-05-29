@@ -88,3 +88,67 @@ Using the output from gDNAdx(), plot the genomic origin of the alignments.
 
 Plot fragments length distributions estimated with gDNAdx()
 }
+\examples{
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+gdnax
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+
+# plot gDNA diagnostic measures
+plot(gdnax, group=pdat$gDNA, pch=19)
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+
+# plot origin of alignments per sample
+plotAlnOrigins(gdnax, group=pdat$gDNA)
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+
+# plot fragments length distributions
+plotFrgLength(gdnax, group=pdat$gDNA)
+
+}

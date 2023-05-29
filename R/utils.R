@@ -7,7 +7,7 @@
     if (missing(bfl) || length(bfl) == 0 ||
         !class(bfl) %in% c("character", "BamFileList"))
         stop(paste("argument 'bfl' should be either a string character vector",
-                   "of BAM file names or a 'BamFileList' object", sep=" "))
+                    "of BAM file names or a 'BamFileList' object", sep=" "))
     
     if (is.character(bfl)) {
         mask <- vapply(bfl, FUN = file.exists, FUN.VALUE = logical(1))
@@ -16,8 +16,8 @@
                         paste(paste("  ", bfl[!mask]), collapse="\n")))
         if (any(duplicated(bfl)))
             stop(sprintf("The following input BAM files are duplicated:\n%s",
-                         paste(paste("  ", bfl[duplicated(bfl)]),
-                               collapse="\n")))
+                        paste(paste("  ", bfl[duplicated(bfl)]),
+                                collapse="\n")))
     }
     
     if (!is(bfl, "BamFileList"))
@@ -79,7 +79,7 @@
             bf <- open(bf)
         testPairedEndBam(bf)
     }
-    peflag <- unname(sapply(bfl, testpe))
+    peflag <- unname(vapply(bfl, testpe, FUN.VALUE = logical(1L)))
     if (singleEnd && !all(!peflag))
         stop("Some BAM files are paired end, but 'singleEnd=TRUE'.")
 
@@ -139,44 +139,45 @@
     annotObj <- NULL
 
     if (is.character(pkgName)) {
-      if (!pkgName %in% installed.packages(noCache=TRUE)[, "Package"])
-        stop(sprintf("please install the Bioconductor package %s.", pkgName))
-      if (!.isPkgLoaded(pkgName)) {
-        if (verbose)
-          message("Loading ", pkgType, " annotation package ", pkgName)
-        loaded <- suppressPackageStartupMessages(require(pkgName,
-                                                         character.only=TRUE))
-        if (!loaded)
-          stop(sprintf("package %s could not be loaded.", pkgName))
-      }
-      tryCatch({
-        annotObj <- get(pkgName)
-      }, error=function(err) {
-        fmtstr <- paste("The annotation package %s should automatically load",
-                        "an %s object with the same name as the package.")
-        errmsg <- sprintf(fmtstr, pkgName, pkgType)
-        stop(errmsg)
-      })
+        if (!pkgName %in% installed.packages(noCache=TRUE)[, "Package"])
+            stop(sprintf("please install the Bioconductor package %s.", 
+                         pkgName))
+        if (!.isPkgLoaded(pkgName)) {
+            if (verbose)
+                message("Loading ", pkgType, " annotation package ", pkgName)
+            loaded <- suppressPackageStartupMessages(require(pkgName,
+                                                        character.only=TRUE))
+            if (!loaded)
+                stop(sprintf("package %s could not be loaded.", pkgName))
+        }
+        tryCatch({
+            annotObj <- get(pkgName)
+        }, error=function(err) {
+            fmtstr <- paste("The annotation package %s should automatically load",
+                            "an %s object with the same name as the package.")
+            errmsg <- sprintf(fmtstr, pkgName, pkgType)
+            stop(errmsg)
+        })
     } else if (class(pkgName) != pkgType) {
-      fmtstr <- paste("argument '%s' should either contain the name of an",
-                      "'%s' annotation package or be an '%s' annotation",
-                      "object itself.")
-      errmsg <- sprintf(fmtstr, argName, pkgType, pkgType)
-      stop(errmsg)
+        fmtstr <- paste("argument '%s' should either contain the name of an",
+                        "'%s' annotation package or be an '%s' annotation",
+                        "object itself.")
+        errmsg <- sprintf(fmtstr, argName, pkgType, pkgType)
+        stop(errmsg)
     } else
-      annotObj <- pkgName
+        annotObj <- pkgName
 
     if (!is(annotObj, pkgType))
-      stop(sprintf("The object loaded with name %s is not an '%s' object.",
-                   ifelse(is.character(pkgName), pkgName,
-                          gettext(callobj)[2])), pkgType)
+        stop(sprintf("The object loaded with name %s is not an '%s' object.",
+                    ifelse(is.character(pkgName), pkgName,
+                            gettext(callobj)[2])), pkgType)
 
     annotObj
 }
 
 ## private function .isPkgLoaded()
 .isPkgLoaded <- function(name) {
-   (paste("package:", name, sep="") %in% search())
+    (paste("package:", name, sep="") %in% search())
 }
 
 ## private function .matchSeqinfo()
@@ -185,9 +186,9 @@
 #' @importFrom GenomeInfoDb seqinfo seqinfo<- seqlevelsStyle<- seqlevels
 .matchSeqinfo <- function(gal, tx, verbose=TRUE) {
     stopifnot("GAlignments" %in% class(gal) ||
-              "GAlignmentPairs" %in% class(gal) ||
-              "GAlignmentsList" %in% class(gal) ||
-              "TxDb" %in% class(tx)) ## QC
+                "GAlignmentPairs" %in% class(gal) ||
+                "GAlignmentsList" %in% class(gal) ||
+                "TxDb" %in% class(tx)) ## QC
 
     seqlevelsStyle(gal) <- seqlevelsStyle(tx)[1]
     slengal <- seqlengths(gal)
@@ -198,28 +199,28 @@
     if (any(slengal != slentx)) {
         if (sum(slengal != slentx) == 1 && verbose) {
             message(sprintf(paste("Chromosome %s has different lengths",
-                                  "between the input BAM and the TxDb",
-                                  "annotation package. This chromosome will",
-                                  "be discarded from further analysis",
-                                  sep=" "),
+                                "between the input BAM and the TxDb",
+                                "annotation package. This chromosome will",
+                                "be discarded from further analysis",
+                                sep=" "),
                             paste(commonchr[which(slengal != slentx)],
-                                  collapse=", ")))
+                                collapse=", ")))
 
         } else if (verbose) {
             message(sprintf(paste("Chromosomes %s have different lengths",
-                                  "between the input BAM and the TxDb",
-                                  "annotation package. These chromosomes",
-                                  "will be discarded from further analysis",
-                                  sep=" "),
+                                "between the input BAM and the TxDb",
+                                "annotation package. These chromosomes",
+                                "will be discarded from further analysis",
+                                sep=" "),
                             paste(commonchr[which(slengal != slentx)],
-                                  collapse=", ")))
+                                collapse=", ")))
         }
         if (sum(slengal == slentx) == 0)
             stop(paste("None of the chromosomes in the input BAM file has the",
-                       "same length as the chromosomes in the input TxDb",
-                       "annotation package.", sep=" "))
+                        "same length as the chromosomes in the input TxDb",
+                        "annotation package.", sep=" "))
         gal <- keepSeqlevels(gal, commonchr[slengal == slentx],
-                             pruning.mode="coarse")
+                            pruning.mode="coarse")
         commonchr <- commonchr[slengal == slentx]
     }
 
@@ -235,16 +236,16 @@
 #' @importFrom GenomicAlignments readGAlignmentsList readGAlignments 
 #' @importFrom GenomicAlignments readGAlignmentPairs
 .getReadFunction <- function(singleEnd, fragments) {
-  if (singleEnd) {
-    FUN <- readGAlignments
-  } else {
-    if (fragments)
-      FUN <- readGAlignmentsList
-    else
-      FUN <- readGAlignmentPairs
-  }
-  
-  FUN
+    if (singleEnd) {
+        FUN <- readGAlignments
+    } else {
+        if (fragments)
+            FUN <- readGAlignmentsList
+        else
+            FUN <- readGAlignmentPairs
+    }
+    
+    FUN
 }
 
 ## private function .appendHits()
@@ -252,13 +253,13 @@
 ## assuming they have identical right nodes
 #' @importFrom S4Vectors nLnode nRnode isSorted from to Hits
 .appendHits <- function(hits1, hits2) {
-  stopifnot(nRnode(hits1) == nRnode(hits2))
-  stopifnot(isSorted(from(hits1)) == isSorted(from(hits2)))
-  hits <- c(Hits(from=from(hits1), to=to(hits1),
-                 nLnode=nLnode(hits1)+nLnode(hits2),
-                 nRnode=nRnode(hits1), sort.by.query=isSorted(from(hits1))),
-            Hits(from=from(hits2)+nLnode(hits1), to=to(hits2),
-                 nLnode=nLnode(hits1)+nLnode(hits2),
-                 nRnode=nRnode(hits2), sort.by.query=isSorted(from(hits2))))
-  hits
+    stopifnot(nRnode(hits1) == nRnode(hits2))
+    stopifnot(isSorted(from(hits1)) == isSorted(from(hits2)))
+    hits <- c(Hits(from=from(hits1), to=to(hits1),
+                    nLnode=nLnode(hits1)+nLnode(hits2),
+                    nRnode=nRnode(hits1), sort.by.query=isSorted(from(hits1))),
+              Hits(from=from(hits2)+nLnode(hits1), to=to(hits2),
+                    nLnode=nLnode(hits1)+nLnode(hits2),
+                    nRnode=nRnode(hits2), sort.by.query=isSorted(from(hits2))))
+    hits
 }

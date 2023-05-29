@@ -51,7 +51,7 @@ A \link[base:list]{list} object with two elements:
   \item "strandMode": the \code{strandMode} of the sample(s) following
         \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
         class definition. If all samples have the same \code{strandMode},
-        the length of the vector is 1. In summary, it can take values: \code{NA}
+        the length of the vector is 1. It can take values: \code{NA}
         (library is not strand-specific), 1 (strand of pair is strand of 
         its first alignment), 2 (strand of pair is strand of its second 
         alignment) or "ambiguous" (additional category used here for 
@@ -90,4 +90,22 @@ read strand is the opposite to the one of the read.
 
 A subset of 200,000 alignments overlapping gene annotations are used to
 compute strandedness.
+}
+\examples{
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
+strandM$strandMode
+head(strandM$Strandedness)
+
+
 }

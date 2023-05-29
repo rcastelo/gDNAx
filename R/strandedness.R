@@ -39,7 +39,7 @@
 #'   \item "strandMode": the \code{strandMode} of the sample(s) following
 #'         \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 #'         class definition. If all samples have the same \code{strandMode},
-#'         the length of the vector is 1. In summary, it can take values: \code{NA}
+#'         the length of the vector is 1. It can take values: \code{NA}
 #'         (library is not strand-specific), 1 (strand of pair is strand of 
 #'         its first alignment), 2 (strand of pair is strand of its second 
 #'         alignment) or "ambiguous" (additional category used here for 
@@ -74,6 +74,23 @@
 #' A subset of 200,000 alignments overlapping gene annotations are used to
 #' compute strandedness.
 #' 
+#' 
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
+#' strandM$strandMode
+#' head(strandM$Strandedness)
+#'
 #'
 #' @importFrom BiocGenerics basename path
 #' @importFrom S4Vectors mcols mcols<-
@@ -86,46 +103,46 @@
 #' @rdname identifyStrandMode
 
 identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
-                               yieldSize=1000000L, verbose=TRUE,
-                               BPPARAM=SerialParam(progressbar=verbose)) {
+                                yieldSize=1000000L, verbose=TRUE,
+                                BPPARAM=SerialParam(progressbar=verbose)) {
   
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
   
     if (is.character(txdb))
-      txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
-                                           verbose=verbose)
+        txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
+                                            verbose=verbose)
     if (verbose)
-      message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
+        message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
     
     ## fetch transcript annotations
     exbytx <- exonsBy(txdb, by="tx")
     if (stdChrom) {
-      exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
-      exbytx <- exbytx[lengths(exbytx) > 0]
+        exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
+        exbytx <- exbytx[lengths(exbytx) > 0]
     }
     
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
-                           isProperPair=!singleEnd,
-                           isSecondaryAlignment=FALSE,
-                           isDuplicate=FALSE,
-                           isNotPassingQualityControls=FALSE)
+                            isProperPair=!singleEnd,
+                            isSecondaryAlignment=FALSE,
+                            isDuplicate=FALSE,
+                            isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
     
     if (verbose)
-      message("Start processing BAM file(s)")
+        message("Start processing BAM file(s)")
     
     # strandedness by strandMode
     strbysm <- NULL
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
-      verbose <- FALSE
-      strbysm <- bplapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
-                          singleEnd=singleEnd, strandMode=1L, param=param,
-                          verbose=verbose, BPPARAM=BPPARAM)
+        verbose <- FALSE
+        strbysm <- bplapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
+                            singleEnd=singleEnd, strandMode=1L, param=param,
+                            verbose=verbose, BPPARAM=BPPARAM)
     } else
-      strbysm <- lapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
-                        singleEnd=singleEnd, strandMode=1L, param=param,
-                        verbose=verbose)
+        strbysm <- lapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
+                            singleEnd=singleEnd, strandMode=1L, param=param,
+                            verbose=verbose)
     
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
@@ -146,10 +163,10 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 .strness_oneBAM <- function(bf, tx, stdChrom, singleEnd, strandMode=1L,
                             param, verbose) {
     if (isOpen(bf))
-      close(bf)
+        close(bf)
     
     if (verbose)
-      message(sprintf("Computing strandedness from %s", basename(path(bf))))
+        message(sprintf("Computing strandedness from %s", basename(path(bf))))
     
     i <- 0L
     gal <- NULL
@@ -157,23 +174,23 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     nalnbystr <- integer(4L)
     open(bf)
     while (naln < 2e+05 & i < 10) {
-      if (singleEnd)
-          gal <- readGAlignments(bf, param=param, use.names=FALSE)
-      else
-          gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
-                                   use.names=FALSE)
-      if (stdChrom)
-          gal <- keepStandardChromosomes(gal, pruning.mode="fine")
-      
-      if (length(gal) == 0)
-          break
-      
-      gal <- .matchSeqinfo(gal, tx, verbose)
-      
-      nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE)
-      nalnbystr <- nalnbf + nalnbystr
-      naln <- nalnbystr["Nalignments"]
-      i <- i + 1
+        if (singleEnd)
+            gal <- readGAlignments(bf, param=param, use.names=FALSE)
+        else
+            gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
+                                      use.names=FALSE)
+        if (stdChrom)
+            gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+        
+        if (length(gal) == 0)
+            break
+        
+        gal <- .matchSeqinfo(gal, tx, verbose)
+        
+        nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE)
+        nalnbystr <- nalnbf + nalnbystr
+        naln <- nalnbystr["Nalignments"]
+        i <- i + 1
     }
     on.exit(close(bf))
     
@@ -203,51 +220,51 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @importFrom GenomicRanges GRanges
 .getStrandedness <- function(gal, tx, reportAll=FALSE) {
   
-  if (reportAll & is(gal, "GAlignmentPairs")) 
-    if (strandMode(gal) != 1L)
-      stop("strandMode of 'gal' must be 1L when ",
-           "'reportAll = TRUE'.")
-  
-  ## calculate overlaps between alignments and transcripts
-  ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=FALSE)
-  
-  ## build a mask to select only 1 overlap per alignment (to avoid counting
-  ## twice an alignment if it maps to > transcript)
-  ovtxaln <- ovtx[!duplicated(queryHits(ovtx))]
-  
-  ## calculate overlaps between antisense alignments and transcripts
-  ovtxis <- findOverlaps(invertStrand(GRanges(gal)), tx, ignore.strand=FALSE)
-  ovtxisaln <- ovtxis[!duplicated(queryHits(ovtxis))]
-  
-  ## identifying ambiguous alignments (mapping to regions with transcripts in
-  ## both strands)
-  ambaln <- intersect(queryHits(ovtxaln), queryHits(ovtxisaln))
-  
-  ## number of alignments aligned to correct strand of transcripts
-  nalnst <- sum(!queryHits(ovtxaln) %in% ambaln)
-  
-  ## number of alignments aligned to oposite strand of transcripts
-  nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
-  
-  ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
-  if (ambig > 0.10)
-    warning("The proportion of alignments mapping to regions with ",
-            "transcripts annotated to both strands is > 0.10, this can ",
-            "cause strandedness value to be low.")
-  
-  if (reportAll) {
-    naln <- nalnst + nalnisst + length(ambaln)
+    if (reportAll & is(gal, "GAlignmentPairs")) 
+        if (strandMode(gal) != 1L)
+            stop("strandMode of 'gal' must be 1L when ",
+                "'reportAll = TRUE'.")
     
-    c("nalnst" = nalnst, "nalnisst" = nalnisst, "ambig" = length(ambaln),
-      "Nalignments" = naln)
+    ## calculate overlaps between alignments and transcripts
+    ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=FALSE)
     
-  } else {
-    ## strandedness value (according to strandMode specified) ignoring
-    ## proportion of ambiguous alignments
-    strness2 <- nalnst / (nalnst + nalnisst)
+    ## build a mask to select only 1 overlap per alignment (to avoid counting
+    ## twice an alignment if it maps to > transcript)
+    ovtxaln <- ovtx[!duplicated(queryHits(ovtx))]
     
-    strness2
-  }
+    ## calculate overlaps between antisense alignments and transcripts
+    ovtxis <- findOverlaps(invertStrand(GRanges(gal)), tx, ignore.strand=FALSE)
+    ovtxisaln <- ovtxis[!duplicated(queryHits(ovtxis))]
+    
+    ## identifying ambiguous alignments (mapping to regions with transcripts in
+    ## both strands)
+    ambaln <- intersect(queryHits(ovtxaln), queryHits(ovtxisaln))
+    
+    ## number of alignments aligned to correct strand of transcripts
+    nalnst <- sum(!queryHits(ovtxaln) %in% ambaln)
+    
+    ## number of alignments aligned to oposite strand of transcripts
+    nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
+    
+    ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
+    if (ambig > 0.10)
+        warning("The proportion of alignments mapping to regions with ",
+                "transcripts annotated to both strands is > 0.10, this can ",
+                "cause strandedness value to be low.")
+    
+    if (reportAll) {
+        naln <- nalnst + nalnisst + length(ambaln)
+        
+        c("nalnst" = nalnst, "nalnisst" = nalnisst, "ambig" = length(ambaln),
+            "Nalignments" = naln)
+      
+    } else {
+        ## strandedness value (according to strandMode specified) ignoring
+        ## proportion of ambiguous alignments
+        strness2 <- nalnst / (nalnst + nalnisst)
+        
+        strness2
+    }
 }
 
 ## Private function to decide strandMode based on .getStrandedness() output
@@ -257,7 +274,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     sm[strbysm[,"strandMode1"] > 0.9] <- 1L
     sm[strbysm[,"strandMode2"] > 0.9] <- 2L
     unkn <- strbysm[,"strandMode1"] > 0.40 & strbysm[,"strandMode1"] < 0.60 &
-      strbysm[,"strandMode2"] > 0.40 & strbysm[,"strandMode2"] < 0.60
+        strbysm[,"strandMode2"] > 0.40 & strbysm[,"strandMode2"] < 0.60
     sm[unkn] <- NA
     # sm[strbysm[,"ambig"] > 0.15] <- "highAmbiguous"
     
@@ -278,10 +295,10 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     lownaln <- strbysm[,"Nalignments"] < 1e+05
     
     if (any(lownaln))
-      warning("The following samples had less than 1e+05 alignments ",
-              "overlapping exonic regions, decreasing the accuracy of the ",
-              sprintf("strandedness value: %s. ", 
-                      paste(rownames(strbysm)[lownaln], collapse = ", ")))
+        warning("The following samples had less than 1e+05 alignments ",
+                "overlapping exonic regions, decreasing the accuracy of the ",
+                sprintf("strandedness value: %s. ", 
+                        paste(rownames(strbysm)[lownaln], collapse = ", ")))
 }
 
 
@@ -314,6 +331,15 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @param yieldSize (Default 5e5) Field inherited from
 #' \code{\link[Rsamtools]{BamFile}}. The BAM is read by chunks.
 #' \code{yieldSize} represents the number of records to read for each chunk.
+#' 
+#' @param ambiguous (Default FALSE) Logical value indicating if reads that
+#' overlap a region with features annotated to both strands should be included
+#' in the strandedness value computation.
+#' 
+#' @param p (Default 0.6) Numeric value for the exact binomial test performed
+#' for the strandedness value of each feature, representing the hypothesized
+#' probability of success (i.e. the strandedness value expected for a 
+#' non-stranded dataset).
 #'
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
@@ -339,6 +365,25 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' the original strand of reads is used. All alignments from the BAM file(s) 
 #' are considered to compute the strandedness.
 #' 
+#' The \code{p} value should be close to 0.5, representing the strandedness
+#' expected for a non-stranded RNA-seq library.
+#' 
+#' #' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' features <- range(exonsBy(txdb, by="gene"))
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' sByFeature <- strnessByFeature(bamfiles, features, singleEnd=FALSE,
+#'                             strandMode=2L)
+#' sByFeature
 #' 
 #' @importFrom Rsamtools scanBamFlag ScanBamParam
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers
@@ -347,8 +392,9 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @export
 #' @rdname strnessByFeature
 strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
-                             yieldSize=1000000L, verbose=TRUE,
-                             BPPARAM=SerialParam(progressbar=verbose)) {
+                            yieldSize=1000000L, ambiguous=FALSE, p=0.6,
+                            verbose=TRUE,
+                            BPPARAM=SerialParam(progressbar=verbose)) {
   
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
@@ -362,10 +408,10 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
         stop("'features' object should be either a 'GRanges' or a 'GRangesList' object.")
     
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
-                           isProperPair=!singleEnd,
-                           isSecondaryAlignment=FALSE,
-                           isDuplicate=FALSE,
-                           isNotPassingQualityControls=FALSE)
+                            isProperPair=!singleEnd,
+                            isSecondaryAlignment=FALSE,
+                            isDuplicate=FALSE,
+                            isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
     
     if (verbose)
@@ -375,22 +421,25 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
         strnessByF <- bplapply(bfl, .strnessByF_oneBAM, features=features,
-                              singleEnd=singleEnd, strandMode=strandMode,
-                              param=param, verbose=verbose, BPPARAM=BPPARAM)
+                            singleEnd=singleEnd, strandMode=strandMode,
+                            param=param, ambiguous=ambiguous, p=p,
+                            verbose=verbose, BPPARAM=BPPARAM)
     } else
         strnessByF <- lapply(bfl, .strnessByF_oneBAM, features=features,
                             singleEnd=singleEnd, strandMode=strandMode,
-                            param=param, verbose=verbose)
+                            param=param, ambiguous=ambiguous, p=p,
+                            verbose=verbose)
     
-      names(strnessByF) <- gsub(pattern = ".bam", "", names(strnessByF), fixed = TRUE)
+      names(strnessByF) <- gsub(pattern = ".bam", "", names(strnessByF), 
+                                fixed = TRUE)
       strness <- do.call("cbind", lapply(strnessByF, function(x) x$strness))
       ov_c <- do.call("cbind", lapply(strnessByF, function(x) x$ov_c))
       ov_cinvs <- do.call("cbind", lapply(strnessByF, function(x) x$ov_cinvs))
+      p.value <- do.call("cbind", lapply(strnessByF, function(x) x$p.value))
       
-      strnessByF_se <- SummarizedExperiment(assays=list(strness=strness, 
-                                                        counts=ov_c, 
-                                                        counts_invstrand=ov_cinvs),
-                                            rowRanges=features)
+      alist <- list(strness = strness, counts = ov_c, 
+                    counts_invstrand = ov_cinvs, p.value = p.value)
+      strnessByF_se <- SummarizedExperiment(assays = alist, rowRanges=features)
       strnessByF_se
 }
 
@@ -402,7 +451,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
 #' @importFrom methods formalArgs
 #' @importFrom GenomeInfoDb seqlevelsStyle
 .strnessByF_oneBAM <- function(bf, features, singleEnd, strandMode=1L,
-                               param, verbose) {
+                                param, ambiguous, p, verbose) {
     if (isOpen(bf))
         close(bf)
     
@@ -414,20 +463,29 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     open(bf)
     on.exit(close(bf))
     while (length(gal <- do.call(readfun,
-                                 c(list(file = bf), list(param=param),
-                                   list(strandMode=strandMode)[strand_arg])))) {
+                                c(list(file = bf), list(param=param),
+                                list(strandMode=strandMode)[strand_arg])))) {
         # gal <- .matchSeqinfo(gal, features, verbose)
         seqlevelsStyle(gal) <- seqlevelsStyle(features)[1]
         
         ## Finding overlaps using ovUnion method
-        suppressWarnings(thisov <- findOverlaps(gal, features, ignore.strand=FALSE))
-        suppressWarnings(thisovinvs <- findOverlaps(invertStrand(gal), features, ignore.strand=FALSE))
+        suppressWarnings(thisov <- findOverlaps(gal, features, 
+                                                ignore.strand=FALSE))
+        suppressWarnings(thisovinvs <- findOverlaps(invertStrand(gal), 
+                                                features, ignore.strand=FALSE))
         
-        ## Remove ambigous reads
+        ## Remove alignments overlapping > 1 feature
         r_to_keep <- which(countQueryHits(thisov) == 1L)
         thisov <- thisov[queryHits(thisov) %in% r_to_keep]
         r_to_keepinvs <- which(countQueryHits(thisovinvs) == 1L)
         thisovinvs <- thisovinvs[queryHits(thisovinvs) %in% r_to_keepinvs]
+        
+        ## if ambiguous = FALSE, remove ambiguous reads
+        if (ambiguous) {
+            ambaln <- intersect(queryHits(thisov), queryHits(thisovinvs))
+            thisov <- thisov[!(queryHits(thisov) %in% ambaln)]
+            thisovinvs <- thisovinvs[!(queryHits(thisovinvs) %in% ambaln)]
+        }
         
         ov <- .appendHits(ov, thisov)
         ovinvs <- .appendHits(ovinvs, thisovinvs)
@@ -436,12 +494,29 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     ov_c <- countSubjectHits(ov)
     ov_cinvs <- countSubjectHits(ovinvs)
     
+    # strandedness
     wh <- which((ov_c + ov_cinvs) > 0)
     strness <- numeric(length(features))
     strness[wh] <- ov_c[wh] / (ov_c[wh] + ov_cinvs[wh])
-    strnessByF <- list(strness = strness, ov_c = ov_c, ov_cinvs = ov_cinvs)
+    
+    # binomial test on feature strandedness
+    pval <- .strness_binomtest(ov_c, ov_cinvs, p)
+    
+    strnessByF <- list(strness = strness, ov_c = ov_c, ov_cinvs = ov_cinvs,
+                        p.value = pval)
     strnessByF
 }
 
+#' @importFrom stats binom.test
+.strness_binomtest <- function(ov_c, ov_cinvs, p) {
+    pval <- numeric(length(ov_c))
+    yesc <- ov_c > 0
+    for (i in seq_len(sum(yesc))) {
+        pval[yesc][i] <- binom.test(ov_c[yesc][i], 
+                                    ov_c[yesc][i] + ov_cinvs[yesc][i], 
+                                    p, alternative = "greater")$p.value
+    }
+    pval
+}
 
 
