@@ -698,7 +698,7 @@ plotAlnOrigins <- function(x, group=1L) {
 #' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 #' 
 #' # plot fragments length distributions
-#' plotFrgLength(gdnax, group=pdat$gDNA)
+#' plotFrgLength(gdnax)
 #' 
 #' @export
 #' @rdname gDNAdx

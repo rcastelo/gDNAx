@@ -149,6 +149,6 @@ pdat <- LiYu22phenoData(bamfiles)
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
 # plot fragments length distributions
-plotFrgLength(gdnax, group=pdat$gDNA)
+plotFrgLength(gdnax)
 
 }
