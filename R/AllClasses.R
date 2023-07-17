@@ -200,7 +200,7 @@ setMethod("getIgc", "gDNAx",
 #'
 #' @return \code{features()}: A \code{GRanges} object with intron ranges.
 #' 
-#' #' @examples
+#' @examples
 #' library(gDNAinRNAseqData)
 #' 
 #' library(TxDb.Hsapiens.UCSC.hg38.knownGene)

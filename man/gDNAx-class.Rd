@@ -30,22 +30,6 @@
 \code{features()}: A \code{GRanges} object with intergenic ranges.
 
 \code{features()}: A \code{GRanges} object with intron ranges.
-
-#' @examples
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
-
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
-
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-int <- getInt(gdnax)
-head(int, n=3)
 }
 \description{
 This is a class for storing the results of a call to the
@@ -166,5 +150,20 @@ pdat <- LiYu22phenoData(bamfiles)
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 igc <- getIgc(gdnax)
 head(igc, n=3)
+
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+int <- getInt(gdnax)
+head(int, n=3)
 
 }

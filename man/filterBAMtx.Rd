@@ -86,7 +86,6 @@ among being splice-compatible with one or more junctions,
 splice-compatible exonic, intronic or intergenic.
 }
 \examples{
-\donttest{
 library(gDNAinRNAseqData)
 
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
@@ -103,9 +102,9 @@ gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 # Filtering splice-compatible alignments and writing them into new BAM files
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
                        isSpliceCompatibleExonic=TRUE)
-fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
-list.files(".", pattern="*.bam$")
-}
+dir <- tempdir()
+fstats <- filterBAMtx(gdnax, path=dir, txflag=fbf)
+list.files(dir, pattern="*.bam$")
 
 
 library(gDNAinRNAseqData)
@@ -123,6 +122,26 @@ gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
 # Filtering splice-compatible alignments and writing them into new BAM files
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-                       isSpliceCompatibleExonic=TRUE)
+                       isSpliceCompatibleExonic=FALSE,
+                       isIntronic=FALSE,
+                       isIntergenic = FALSE)
 
+library(gDNAinRNAseqData)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+
+# Filtering splice-compatible alignments and writing them into new BAM files
+fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+                       isSpliceCompatibleExonic=TRUE)
+fSCJ <- testBAMtxFlag(fbf, "isSpliceCompatibleJunction")
+                       
 }

@@ -294,11 +294,13 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
   
     lownaln <- strbysm[,"Nalignments"] < 1e+05
     
-    if (any(lownaln))
-        warning("The following samples had less than 1e+05 alignments ",
-                "overlapping exonic regions, decreasing the accuracy of the ",
-                sprintf("strandedness value: %s. ", 
-                        paste(rownames(strbysm)[lownaln], collapse = ", ")))
+    if (any(lownaln)) {
+        messlownaln <- paste("The following samples had less than 1e+05 ",
+                        "alignments overlapping exonic regions, decreasing ",
+                        "the accuracy of the strandedness value: %s. ")
+        whlownaln <- paste(rownames(strbysm)[lownaln], collapse = ", ")
+        warning(sprintf(messlownaln, whlownaln))
+    }
 }
 
 
@@ -368,7 +370,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' The \code{p} value should be close to 0.5, representing the strandedness
 #' expected for a non-stranded RNA-seq library.
 #' 
-#' #' @examples
+#' @examples
 #' library(gDNAinRNAseqData)
 #' 
 #' library(TxDb.Hsapiens.UCSC.hg38.knownGene)

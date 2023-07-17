@@ -6,18 +6,21 @@
 .checkBamFileListArgs <- function(bfl, singleEnd, fragments, yieldSize) {
     if (missing(bfl) || length(bfl) == 0 ||
         !class(bfl) %in% c("character", "BamFileList"))
-        stop(paste("argument 'bfl' should be either a string character vector",
-                    "of BAM file names or a 'BamFileList' object", sep=" "))
+        stop("argument 'bfl' should be either a string character vector",
+                "of BAM file names or a 'BamFileList' object")
     
     if (is.character(bfl)) {
         mask <- vapply(bfl, FUN = file.exists, FUN.VALUE = logical(1))
-        if (any(!mask))
+        if (any(!mask)) {
+            whmiss <- paste(paste("  ", bfl[!mask]), collapse="\n")
             stop(sprintf("The following input BAM files cannot be found:\n%s",
-                        paste(paste("  ", bfl[!mask]), collapse="\n")))
-        if (any(duplicated(bfl)))
+                        whmiss))
+        }
+        if (any(duplicated(bfl))) {
+            whdupl <- paste(paste("  ", bfl[duplicated(bfl)]), collapse="\n")
             stop(sprintf("The following input BAM files are duplicated:\n%s",
-                        paste(paste("  ", bfl[duplicated(bfl)]),
-                                collapse="\n")))
+                        whdupl))
+        }
     }
     
     if (!is(bfl, "BamFileList"))
@@ -110,7 +113,7 @@
         w <- as.integer(names(tab[which.max(tab)]))
         w
     }
-    allw <- unname(sapply(bfl, qw))
+    allw <- unname(vapply(bfl, qw, FUN.VALUE = integer(1L)))
     if (length(unique(allw)) > 1)
         warning(sprintf("BAM files have different read lengths, using the minimum (%d).", min(allw)))
 
@@ -145,12 +148,16 @@
         if (!.isPkgLoaded(pkgName)) {
             if (verbose)
                 message("Loading ", pkgType, " annotation package ", pkgName)
-            loaded <- suppressPackageStartupMessages(require(pkgName,
+            # loaded <- suppressPackageStartupMessages(require(pkgName,
+            #                                             character.only=TRUE))
+            loaded <- suppressPackageStartupMessages(requireNamespace(pkgName,
                                                         character.only=TRUE))
             if (!loaded)
                 stop(sprintf("package %s could not be loaded.", pkgName))
         }
         tryCatch({
+            # annotObj <- get(pkgName)
+            attachNamespace(pkgName)
             annotObj <- get(pkgName)
         }, error=function(err) {
             fmtstr <- paste("The annotation package %s should automatically load",
@@ -198,27 +205,28 @@
     slentx <- slentx[commonchr]
     if (any(slengal != slentx)) {
         if (sum(slengal != slentx) == 1 && verbose) {
-            message(sprintf(paste("Chromosome %s has different lengths",
+            difflonechr <- paste("Chromosome %s has different lengths",
                                 "between the input BAM and the TxDb",
                                 "annotation package. This chromosome will",
                                 "be discarded from further analysis",
-                                sep=" "),
-                            paste(commonchr[which(slengal != slentx)],
-                                collapse=", ")))
-
+                                sep=" ")
+            whdifflonechr <- paste(commonchr[which(slengal != slentx)],
+                                    collapse=", ")
+            message(sprintf(difflonechr, whdifflonechr))
         } else if (verbose) {
-            message(sprintf(paste("Chromosomes %s have different lengths",
-                                "between the input BAM and the TxDb",
-                                "annotation package. These chromosomes",
-                                "will be discarded from further analysis",
-                                sep=" "),
-                            paste(commonchr[which(slengal != slentx)],
-                                collapse=", ")))
+            difflmultichr <- paste("Chromosomes %s have different lengths",
+                                    "between the input BAM and the TxDb",
+                                    "annotation package. These chromosomes",
+                                    "will be discarded from further analysis",
+                                    sep=" ")
+            whdifflmultichr <- paste(commonchr[which(slengal != slentx)],
+                                    collapse=", ")
+            message(sprintf(difflmultichr, whdifflmultichr))
         }
         if (sum(slengal == slentx) == 0)
-            stop(paste("None of the chromosomes in the input BAM file has the",
-                        "same length as the chromosomes in the input TxDb",
-                        "annotation package.", sep=" "))
+            stop("None of the chromosomes in the input BAM file has the ",
+                    "same length as the chromosomes in the input TxDb ",
+                    "annotation package.")
         gal <- keepSeqlevels(gal, commonchr[slengal == slentx],
                             pruning.mode="coarse")
         commonchr <- commonchr[slengal == slentx]

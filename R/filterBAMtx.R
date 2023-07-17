@@ -28,7 +28,6 @@
 #' @return A vector of output filename paths.
 #' 
 #' @examples
-#' \donttest{
 #' library(gDNAinRNAseqData)
 #' 
 #' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
@@ -45,9 +44,9 @@
 #' # Filtering splice-compatible alignments and writing them into new BAM files
 #' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
 #'                        isSpliceCompatibleExonic=TRUE)
-#' fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
-#' list.files(".", pattern="*.bam$")
-#' }
+#' dir <- tempdir()
+#' fstats <- filterBAMtx(gdnax, path=dir, txflag=fbf)
+#' list.files(dir, pattern="*.bam$")
 #' 
 #'
 #' @importFrom S4Vectors mcols
@@ -77,11 +76,13 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (!file.exists(path))
         stop(sprintf("path %s does not exist.", path))
 
-    if (txflag == 0)
-        stop(paste("No alignment type selected in argument 'txflag'. Please",
-                    "use the function 'filterBAMtxFlag()' to select at least",
-                    "one.", sep=" "))
-
+    if (txflag == 0) {
+        messalntype <- paste("No alignment type selected in argument",
+                            "'txflag'. Please use the function",
+                            "'filterBAMtxFlag()' to select at least one.",
+                            sep=" ")
+        stop(messalntype)
+    }
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- lapply(bfl, function(x, ys) {
                             yieldSize(x) <- ys
@@ -252,12 +253,13 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     envstats <- envstats + stats
     assign("stats", envstats, envir=statsenv)
 
-    if (verbose)
+    if (verbose) {
+        messwhalnstr <- paste(whalnstr, collapse=", ")
         message(sprintf("%d alignments processed, %d (%.2f%%) %s written",
                         envstats["NALN"], sum(envstats[-1]),
                         100*sum(envstats[-1])/envstats["NALN"],
-                        paste(whalnstr, collapse=", ")))
-
+                        messwhalnstr))
+    }
     mt <- match(x$qname, mcols(first(gal))$qname)
     mask <- mask[mt]
 
@@ -316,7 +318,9 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #' 
 #' # Filtering splice-compatible alignments and writing them into new BAM files
 #' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-#'                        isSpliceCompatibleExonic=TRUE)
+#'                        isSpliceCompatibleExonic=FALSE,
+#'                        isIntronic=FALSE,
+#'                        isIntergenic = FALSE)
 #' 
 #' @export
 #' @rdname filterBAMtx
@@ -333,7 +337,8 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
     if (length(args) == 0)
         args <- formals(filterBAMtxFlag)
 
-    idx <- names(args[sapply(args, function(x) !is.na(x) && x)])
+    idx <- names(args[vapply(args, function(x) !is.na(x) && x, 
+                             FUN.VALUE = logical(1L))])
     keep <- Reduce("+", flag[names(flag) %in% idx], 0L)
 
     keep
@@ -346,6 +351,25 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
 #' 
 #' @importFrom bitops bitAnd
 #'
+#' @examples
+#' library(gDNAinRNAseqData)
+#' 
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' 
+#' # Retrieving BAM files
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' 
+#' # Getting information about the gDNA concentrations of each BAM file
+#' pdat <- LiYu22phenoData(bamfiles)
+#' 
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' 
+#' # Filtering splice-compatible alignments and writing them into new BAM files
+#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+#'                        isSpliceCompatibleExonic=TRUE)
+#' fSCJ <- testBAMtxFlag(fbf, "isSpliceCompatibleJunction")
+#'                        
 #' @export
 #' @rdname filterBAMtx
 testBAMtxFlag <- function(flag, value) {

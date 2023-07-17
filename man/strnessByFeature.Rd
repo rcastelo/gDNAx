@@ -79,8 +79,8 @@ are considered to compute the strandedness.
 
 The \code{p} value should be close to 0.5, representing the strandedness
 expected for a non-stranded RNA-seq library.
-
-#' @examples
+}
+\examples{
 library(gDNAinRNAseqData)
 
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
@@ -96,4 +96,5 @@ pdat <- LiYu22phenoData(bamfiles)
 sByFeature <- strnessByFeature(bamfiles, features, singleEnd=FALSE,
                             strandMode=2L)
 sByFeature
+
 }

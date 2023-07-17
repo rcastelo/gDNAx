@@ -594,11 +594,13 @@ function(x, group=1L, labelpoints=FALSE, ...) {
         if (is.numeric(group))
             group <- as.character(group)
         if (is.character(group) || is.factor(group)) {
-            if (length(group) != nrow(dx))
-                stop(paste("argument 'group' is a string character vector or",
-                            "a factor, but it has a length different to the",
-                            "number of BAM files in the input 'gDNAx' object.",
-                            sep=" "))
+            if (length(group) != nrow(dx)) {
+                messgr<- paste("argument 'group' is a string character vector",
+                        "or a factor, but it has a length different to the",
+                        "number of BAM files in the input 'gDNAx' object.",
+                        sep=" ")
+                stop(messgr)
+            }
             group <- factor(group)
             set1pal <- brewer.pal(nlevels(group), "Set1")
             if (nlevels(group) >= 6) {

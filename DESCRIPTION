@@ -41,7 +41,7 @@ Suggests:
     RUnit,
     TxDb.Hsapiens.UCSC.hg38.knownGene,
     gDNAinRNAseqData
-biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics, SplicedAlignment
+biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics, SplicedAlignment, Alignment
 VignetteBuilder: knitr
 RoxygenNote: 7.2.3
 Collate:
