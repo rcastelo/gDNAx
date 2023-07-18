@@ -105,10 +105,11 @@
 identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                                 yieldSize=1000000L, verbose=TRUE,
                                 BPPARAM=SerialParam(progressbar=verbose)) {
-  
+    
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
-  
+    .checkOtherArgs(singleEnd, stdChrom)
+    
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                             verbose=verbose)
@@ -162,7 +163,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                             param, verbose) {
     if (isOpen(bf))
         close(bf)
-  
+    
     if (verbose)
         message(sprintf("Computing strandedness from %s", basename(path(bf))))
     
@@ -216,7 +217,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @importFrom GenomicAlignments invertStrand strandMode
 #' @importFrom GenomicRanges GRanges
 .getStrandedness <- function(gal, tx, reportAll=FALSE) {
-  
+    
     if (reportAll & is(gal, "GAlignmentPairs")) 
         if (strandMode(gal) != 1L)
             stop("strandMode of 'gal' must be 1L when ",
@@ -254,7 +255,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         
         c("nalnst" = nalnst, "nalnisst" = nalnisst, "ambig" = length(ambaln),
             "Nalignments" = naln)
-      
+        
     } else {
         ## strandedness value (according to strandMode specified) ignoring
         ## proportion of ambiguous alignments
@@ -288,7 +289,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 ## Private function to issue a warning when the strandedness value is
 ## computed from a low number of alignments
 .checkMinNaln <- function(strbysm) {
-  
+    
     lownaln <- strbysm[,"Nalignments"] < 1e+05
     
     if (any(lownaln)) {
@@ -299,8 +300,6 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         warning(sprintf(messlownaln, whlownaln))
     }
 }
-
-
 
 
 
@@ -394,7 +393,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
                             yieldSize=1000000L, ambiguous=FALSE, p=0.6,
                             verbose=TRUE,
                             BPPARAM=SerialParam(progressbar=verbose)) {
-  
+    
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
     if (is.na(strandMode))
@@ -427,7 +426,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
                             singleEnd=singleEnd, strandMode=strandMode,
                             param=param, ambiguous=ambiguous, p=p,
                             verbose=verbose)
-    
+      
       names(strnessByF) <- gsub(pattern = ".bam", "", names(strnessByF), 
                                 fixed = TRUE)
       strness <- do.call("cbind", lapply(strnessByF, function(x) x$strness))

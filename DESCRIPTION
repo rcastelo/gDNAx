@@ -10,7 +10,7 @@ Description: Provides diagnostics for assessing genomic DNA contamination in
 License: Artistic-2.0
 Encoding: UTF-8
 Depends:
-    R (>= 4.2)
+    R (>= 4.3)
 Imports: 
     methods,
     BiocGenerics,

@@ -91,10 +91,10 @@
 
     peflag[1]
 }
+
 ## private function .minFrgLen()
 ## returns the read length for single-end and
 ## twice the read length for paired-end
-
 #' @importFrom Rsamtools yieldSize yieldSize<- scanBam
 #' @importFrom S4Vectors unname
 .minFrgLen <- function(bfl, singleEnd) {
@@ -270,4 +270,12 @@
                     nLnode=nLnode(hits1)+nLnode(hits2),
                     nRnode=nRnode(hits2), sort.by.query=isSorted(from(hits2))))
     hits
+}
+
+## private function .checkOtherArg()
+.checkOtherArgs <- function(singleEnd, stdChrom) {
+    if (!is.logical(singleEnd))
+        stop("'singleEnd' must be a logical value")
+    if (!is.logical(stdChrom))
+        stop("'stdChrom' must be a logical value")
 }

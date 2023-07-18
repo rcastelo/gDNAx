@@ -218,14 +218,14 @@ analysis, without the effect of gDNA contamination.
 
 ```{r, eval=FALSE}
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-                       isSpliceCompatibleExonic=TRUE)
+                        isSpliceCompatibleExonic=TRUE)
 fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
 list.files(".", pattern="*.bam$")
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-                       isSpliceCompatibleExonic=TRUE)
+                        isSpliceCompatibleExonic=TRUE)
 tmpdir <- tempdir()
 fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
 list.files(tmpdir, pattern="*.bam$")

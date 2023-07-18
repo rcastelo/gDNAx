@@ -346,7 +346,7 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
         args <- formals(filterBAMtxFlag)
 
     idx <- names(args[vapply(args, function(x) !is.na(x) && x, 
-                             FUN.VALUE = logical(1L))])
+                                FUN.VALUE = logical(1L))])
     keep <- Reduce("+", flag[names(flag) %in% idx], 0L)
 
     keep

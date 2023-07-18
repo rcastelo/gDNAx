@@ -118,7 +118,7 @@ setClass("gDNAx",
 #' @name getDx
 setMethod("getDx", "gDNAx",
             function(x) {
-              x@diagnostics
+                x@diagnostics
             })
 
 #' @param object A \linkS4class{gDNAx} object.
@@ -193,7 +193,7 @@ setMethod("show", "gDNAx",
 #' @name getIgc
 setMethod("getIgc", "gDNAx",
             function(x) {
-              x@intergenic
+                x@intergenic
             })
 
 #' @param x A \linkS4class{gDNAx} object.
@@ -223,5 +223,5 @@ setMethod("getIgc", "gDNAx",
 #' @name getInt
 setMethod("getInt", "gDNAx",
             function(x) {
-              x@intronic
+                x@intronic
             })

@@ -71,10 +71,10 @@
 gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
                     yieldSize=100000L, verbose=TRUE,
                     BPPARAM=SerialParam(progressbar=verbose)) {
-    
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
     strandMode <- .checkStrandMode(strandMode)
+    .checkOtherArgs(singleEnd, stdChrom)
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                             verbose=verbose)
@@ -253,7 +253,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicAlignments isCompatibleWithSkippedExons
 .scoAlignments <- function(gal, tx, tx2gene, singleEnd, strandMode,
                             fragmentsLen, nfrgs=1000) {
-  
+    
     ignore.strand <- ifelse(is.na(strandMode), TRUE, FALSE)
     ## calculate overlaps between alignments and transcripts
     ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=ignore.strand)
@@ -404,7 +404,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     igcrng <- igcrng[width(igcrng) >= minfrglen]
     if (stdChrom)
         igcrng <- keepStandardChromosomes(igcrng, pruning.mode="coarse")
-  
+    
     list(igcrng=igcrng, intrng=pintrons)
 }
 
