@@ -121,7 +121,6 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
         exbytx <- exbytx[lengths(exbytx) > 0]
     }
-    
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
                             isProperPair=!singleEnd,
                             isSecondaryAlignment=FALSE,
@@ -147,7 +146,6 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
     .checkMinNaln(strbysm) # warning if n. align < 1e+05
-    
     sm <- .decideStrandMode(strbysm)
     
     strbysmtype <- list("strandMode" = sm, "Strandedness" = strbysm)
@@ -164,7 +162,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                             param, verbose) {
     if (isOpen(bf))
         close(bf)
-    
+  
     if (verbose)
         message(sprintf("Computing strandedness from %s", basename(path(bf))))
     
@@ -186,7 +184,6 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
             break
         
         gal <- .matchSeqinfo(gal, tx, verbose)
-        
         nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE)
         nalnbystr <- nalnbf + nalnbystr
         naln <- nalnbystr["Nalignments"]
@@ -400,14 +397,13 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
   
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
-    
     if (is.na(strandMode))
         stop("invalid strand mode (must be 0, 1, or 2)")
     
     strandMode <- .checkStrandMode(strandMode)
-    
     if (!is(features, "GRanges") && !is(features, "GRangesList"))
-        stop("'features' object should be either a 'GRanges' or a 'GRangesList' object.")
+        stop("'features' object should be either a 'GRanges' or a", 
+            "'GRangesList' object.")
     
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
                             isProperPair=!singleEnd,
@@ -461,11 +457,9 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     strand_arg <- "strandMode" %in% formalArgs(readfun)
     ov <- Hits(nLnode=0, nRnode=length(features), sort.by.query=TRUE)
     ovinvs <- Hits(nLnode=0, nRnode=length(features), sort.by.query=TRUE)
-    
     open(bf)
     on.exit(close(bf))
-    while (length(gal <- do.call(readfun,
-                                c(list(file = bf), list(param=param),
+    while (length(gal <- do.call(readfun, c(list(file = bf), list(param=param),
                                 list(strandMode=strandMode)[strand_arg])))) {
         # gal <- .matchSeqinfo(gal, features, verbose)
         seqlevelsStyle(gal) <- seqlevelsStyle(features)[1]
@@ -475,24 +469,20 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
                                                 ignore.strand=FALSE))
         suppressWarnings(thisovinvs <- findOverlaps(invertStrand(gal), 
                                                 features, ignore.strand=FALSE))
-        
         ## Remove alignments overlapping > 1 feature
         r_to_keep <- which(countQueryHits(thisov) == 1L)
         thisov <- thisov[queryHits(thisov) %in% r_to_keep]
         r_to_keepinvs <- which(countQueryHits(thisovinvs) == 1L)
         thisovinvs <- thisovinvs[queryHits(thisovinvs) %in% r_to_keepinvs]
-        
         ## if ambiguous = FALSE, remove ambiguous reads
         if (ambiguous) {
             ambaln <- intersect(queryHits(thisov), queryHits(thisovinvs))
             thisov <- thisov[!(queryHits(thisov) %in% ambaln)]
             thisovinvs <- thisovinvs[!(queryHits(thisovinvs) %in% ambaln)]
         }
-        
         ov <- .appendHits(ov, thisov)
         ovinvs <- .appendHits(ovinvs, thisovinvs)
     }
-    
     ov_c <- countSubjectHits(ov)
     ov_cinvs <- countSubjectHits(ovinvs)
     
@@ -500,7 +490,6 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     wh <- which((ov_c + ov_cinvs) > 0)
     strness <- numeric(length(features))
     strness[wh] <- ov_c[wh] / (ov_c[wh] + ov_cinvs[wh])
-    
     # binomial test on feature strandedness
     pval <- .strness_binomtest(ov_c, ov_cinvs, p)
     

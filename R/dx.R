@@ -68,27 +68,21 @@
 #' @importFrom methods new
 #' @export
 #' @rdname gDNAdx
-
 gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
                     yieldSize=100000L, verbose=TRUE,
                     BPPARAM=SerialParam(progressbar=verbose)) {
-
+    
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
     strandMode <- .checkStrandMode(strandMode)
-
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                             verbose=verbose)
-
     if (verbose)
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
-
     minfrglen <- .minFrgLen(bfl, singleEnd)
     igcintrng <- .fetchIGCandINTrng(txdb, minfrglen, stdChrom, strandMode)
-
-    ## fetch transcript annotations
-    exbytx <- exonsBy(txdb, by="tx")
+    exbytx <- exonsBy(txdb, by="tx") ## fetch transcript annotations
     if (stdChrom) {
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
         exbytx <- exbytx[lengths(exbytx) > 0]
@@ -100,83 +94,29 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     mask <- !is.na(genetxid$GENEID)
     tx2gene[mask] <- genetxid$GENEID[mask]
     rm(genetxid)
-
-    sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
-                            isProperPair=!singleEnd,
-                            isSecondaryAlignment=FALSE,
-                            isDuplicate=FALSE,
+    sbflags <- scanBamFlag(isUnmappedQuery=FALSE, isProperPair=!singleEnd,
+                            isSecondaryAlignment=FALSE, isDuplicate=FALSE,
                             isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
-
+    
     if (verbose)
         message("Start processing BAM file(s)")
-
     dxBAMs <- NULL
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
         dxBAMs <- bplapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
-                            int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
-                            stdChrom=stdChrom, singleEnd=singleEnd,
-                            strandMode=strandMode, param=param,
-                           verbose=verbose, BPPARAM=BPPARAM)
+                    int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
+                    stdChrom=stdChrom,singleEnd=singleEnd,strandMode=strandMode,
+                    param=param, verbose=verbose, BPPARAM=BPPARAM)
     } else
         dxBAMs <- lapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                         int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                         stdChrom=stdChrom, singleEnd=singleEnd,
                         strandMode=strandMode, param=param, verbose=verbose)
-
-    if (verbose)
-        message("Collecting diagnostics")
     
-    igcpct <- vapply(dxBAMs, function(x)  ## intergenic %
-                    100 * x$nigcaln / x$naln, FUN.VALUE = numeric(1L))
-    intpct <- vapply(dxBAMs, function(x)  ## intronic %
-                    100 * x$nintaln / x$naln, FUN.VALUE = numeric(1L))
-    scjpct <- vapply(dxBAMs, function(x)  ## splice-compatible junction %
-                    100 * x$nscjaln / x$naln, FUN.VALUE = numeric(1L))
-    scepct <- vapply(dxBAMs, function(x)  ## splice-compatible exonic %
-                    100 * x$nscealn / x$naln, FUN.VALUE = numeric(1L))
-    sccpct <- vapply(dxBAMs, function(x) ##njunc() splice-compatible junction %
-                    100 * x$nsccaln / x$naln, FUN.VALUE = numeric(1L))
-    igcfrglen.mean <- vapply(dxBAMs, function(x) mean(x$igcfrglen),
-                            FUN.VALUE = numeric(1L))
-    intfrglen.mean <- vapply(dxBAMs, function(x) mean(x$intfrglen),
-                            FUN.VALUE = numeric(1L))
-    scjfrglen.mean <- vapply(dxBAMs, function(x) mean(x$scjfrglen),
-                            FUN.VALUE = numeric(1L))
-    scefrglen.mean <- vapply(dxBAMs, function(x) mean(x$scefrglen),
-                            FUN.VALUE = numeric(1L))
-    strness <- vapply(dxBAMs, function(x) x$strness, FUN.VALUE = numeric(1L))
-    
-    snames <- gsub(".bam", "", names(igcpct))
-    if (any(duplicated(snames))) {
-        stopifnot(identical(names(bfl),  names(igcpct)))
-        snames <- path(bfl)
-    }
-    dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct,
-                    SCC=sccpct,
-                    IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
-                    SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
-                    STRAND=strness,
-                    row.names=snames)
-    igcfrglen <- lapply(dxBAMs, function(x) x$igcfrglen)
-    intfrglen <- lapply(dxBAMs, function(x) x$intfrglen)
-    scjfrglen <- lapply(dxBAMs, function(x) x$scjfrglen)
-    scefrglen <- lapply(dxBAMs, function(x) x$scefrglen)
-    names(igcfrglen) <- gsub(".bam", "", names(igcfrglen))
-    names(intfrglen) <- gsub(".bam", "", names(intfrglen))
-    names(scjfrglen) <- gsub(".bam", "", names(scjfrglen))
-    names(scefrglen) <- gsub(".bam", "", names(scefrglen))
-    readLength <- as.integer(minfrglen)
-    if (!singleEnd)
-        readLength <- as.integer(readLength / 2)
-
-    new("gDNAx", bfl=bfl, txdbpkg=txdb$packageName, singleEnd=singleEnd,
-        strandMode=strandMode, stdChrom=stdChrom, readLength=readLength,
-        yieldSize=yieldSize, diagnostics=dx, igcfrglen=igcfrglen,
-        intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen,
-        intergenic=igcintrng$igcrng, intronic=igcintrng$intrng,
-        transcripts=exbytx, tx2gene=tx2gene)
+    dxobj <- .collectDiagn(dxBAMs, bfl, minfrglen, singleEnd, txdb, strandMode,
+                    stdChrom, yieldSize, igcintrng, exbytx, tx2gene, verbose)
+    dxobj
 }
 
 
@@ -195,11 +135,11 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
                             strandMode, param, verbose) {
     if (isOpen(bf))
         close(bf)
-
+    
     if (verbose)
         message(sprintf("Reading first %d alignments from %s",
                         yieldSize(bf), basename(path(bf))))
-
+    
     gal <- NULL
     if (singleEnd)
         gal <- readGAlignments(bf, param=param, use.names=FALSE)
@@ -221,10 +161,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 
     ## intergenic alignments
     igcaln <- .igcAlignments(gal, igc,fragmentsLen=TRUE,nfrgs=1000)
-
     ## intronic alignments
     intaln <- .intAlignments(gal, int, strandMode,fragmentsLen=TRUE,nfrgs=1000)
-
     ## splice-compatible alignments
     scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
                             fragmentsLen=TRUE, nfrgs=1000)
@@ -239,12 +177,20 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
                         (intaln$intmask & scoaln$scemask)
     intaln$intmask[whint] <- FALSE
 
+    dx_oneBAM <- .getdx_oneBAM(igcaln, intaln, scoaln, singleEnd,
+                                strandMode, gal, tx, naln)
+    dx_oneBAM
+}
+
+## private function .getdx_oneBAM() 
+.getdx_oneBAM <- function(igcaln, intaln, scoaln, singleEnd, strandMode,
+                            gal, tx, naln) {
     nigcaln <- sum(igcaln$igcmask)
     nintaln <- sum(intaln$intmask)
     nscjaln <- sum(scoaln$scjmask)
     nscealn <- sum(scoaln$scemask)
     nsccaln <- sum(scoaln$sccmask)
-
+    
     igcfrglen <- scjfrglen <- scefrglen <- sicfrglen <- NA_integer_
     if (!singleEnd) { ## fragments length from paired-end reads
         igcfrglen <- igcaln$igcfrglen
@@ -258,7 +204,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
         strness <- NA
     else
         strness <- .getStrandedness(gal, tx, reportAll=FALSE)
-
+    
     return(list(naln=naln, nigcaln=nigcaln, nintaln=nintaln, nscjaln=nscjaln,
                 nscealn=nscealn, nsccaln=nsccaln, igcfrglen=igcfrglen,
                 intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen,
@@ -307,6 +253,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicAlignments isCompatibleWithSkippedExons
 .scoAlignments <- function(gal, tx, tx2gene, singleEnd, strandMode,
                             fragmentsLen, nfrgs=1000) {
+  
     ignore.strand <- ifelse(is.na(strandMode), TRUE, FALSE)
     ## calculate overlaps between alignments and transcripts
     ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=ignore.strand)
@@ -337,29 +284,33 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     ## logical mask for splice-compatible exonic alignments
     scemaskovtx <- (masksplovtx & maskexnovtx) | (maskskpovtx & maskexnovtx)
     rm(masksplovtx, maskskpovtx, maskjunovtx, maskexnovtx)
-    
     ## splice-compatible where at least one read includes a junction
     ovscjtx <- ovtx[scjmaskovtx & onegenemaskovtx]
     mask <- !duplicated(queryHits(ovscjtx)) ## discard redundant info
     ovscjtx <- ovscjtx[mask]
     scjmask <- countQueryHits(ovscjtx) > 0
-
     ## splice-compatible where reads align completely within exons
     ovscetx <- ovtx[scemaskovtx & onegenemaskovtx]
     mask <- !duplicated(queryHits(ovscetx)) ## discard redundant info
     ovscetx <- ovscetx[mask]
     scemask <- countQueryHits(ovscetx) > 0
-
+    
     res <- list(scjmask=scjmask, scemask=scemask,
                 sccmask=sum(njunc(gal) > 0))
-    scjfrglen <- scefrglen <- NA_integer_
+    res <- .getfrglen(singleEnd, fragmentsLen, res, gal, tx, ovscjtx, ovscetx, 
+                   strandMode, nfrgs)
+    res
+}
+
+## private function .getfrglen()
+.getfrglen <- function(singleEnd, fragmentsLen, res, gal, tx, ovscjtx, ovscetx, 
+                       strandMode, nfrgs) {
     if (!singleEnd && fragmentsLen) { ## for paired-end, get fragments length
         res$scjfrglen <- .sampleFragmentsLength(gal, tx, ovscjtx,
                                                 strandMode, nfrgs)
         res$scefrglen <- .sampleFragmentsLength(gal, tx, ovscetx,
                                                 strandMode, nfrgs)
     }
-
     res
 }
 
@@ -406,17 +357,11 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom GenomicRanges strand strand<- gaps intersect width setdiff
-#' @importFrom AnnotationHub AnnotationHub query
 .fetchIGCandINTrng <- function(txdb, minfrglen, stdChrom, strandMode) {
-
-    ## fetch ranges of annotated genes, discard
-    ## gene information and project them into
-    ## genomic coordinates. use exonsBy() instead
-    ## of genes() to catch annotations of genes
-    ## mapping to multiple sequences and including
-    ## exons on different strands. range() will
-    ## calculate boundaries separately for each
-    ## different sequence
+    ## fetch ranges of annotated genes, discard gene information and project
+    ## them into genomic coordinates. use exonsBy() instead of genes() to
+    ## catch annotations of genes mapping to multiple sequences and including
+    ## exons on different strands.
     exbygn <- exonsBy(txdb, by="gene")
     if (stdChrom) ## important to use 'pruning.mode="fine"' here
         exbygn <- keepStandardChromosomes(exbygn, pruning.mode="fine")
@@ -424,27 +369,16 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     mcols(exbygnrng) <- NULL
     exbygnrng <- reduce(exbygnrng)
 
-    ## fetch ranges of RepeatMasker annotations and
-    ## project them into genomic coordinates
-    suppressMessages(ah <- AnnotationHub())
-    suppressMessages(ahres <- query(ah, c("UCSCRepeatMasker",genome(txdb)[1])))
-    mt <- gregexpr(pattern=" \\([A-Za-z0-9]+\\) ", ahres$title)
-    ahresdates <- substr(ahres$title, unlist(mt)+2,
-                        unlist(mt)+vapply(mt, attr, "match.length",
-                                            FUN.VALUE = integer(1L)) - 3)
-    ahresdates <- as.Date(paste0("1", ahresdates), "%d%b%Y")
-    ## in case > 1 RM annotations available, pick the most recent one
-    suppressMessages(rmskdb <- ahres[[which.max(ahresdates)]])
-    names(rmskdb) <- mcols(rmskdb) <- NULL
+    ## fetch ranges of RepeatMasker annot. and project them into genomic coord.
+    rmskdb <- .fetchRmsk(txdb)
     ## strand(rmskdb) <- "*"
     if (stdChrom)
         rmskdb <- keepStandardChromosomes(rmskdb, pruning.mode="coarse")
     rmskrng <- reduce(rmskdb)
 
-    ## fetch ranges of projected intron coordinates, i.e.,
-    ## of non-overlapping introns
-    ## pexbygn <- sort(unlist(reduce(exbygn), use.names=FALSE))
-    ## pintrons <- sort(intersect(gaps(pexbygn), exbygnrng))
+    ## fetch ranges of projected intron coordinates, i.e. non-overlapping introns
+    # pexbygn <- sort(unlist(reduce(exbygn), use.names=FALSE))
+    # pintrons <- sort(intersect(gaps(pexbygn), exbygnrng))
     gnrmskrng <- sort(c(unlist(reduce(exbygn), use.names=FALSE), rmskrng))
     pintrons <- sort(intersect(gaps(gnrmskrng), exbygnrng))
     if (is.na(strandMode))
@@ -458,13 +392,10 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     strand(exbygnrng) <- "*"
     gnrmskrng <- sort(c(exbygnrng, rmskrng))
 
-    ## fetch ranges of intergenic regions as
-    ## those complementary to the previous
-    ## genic and repeat ranges, collapsing
-    ## neighboring ranges closer to each other
-    ## than the minimum sequencing fragment length
-    ## and/or below that size, to avoid intergenic
-    ## regions under such a size
+    ## fetch ranges of intergenic regions as those complementary to the
+    ## previous genic and repeat ranges, collapsing neighboring ranges closer
+    ## to each other than the minimum sequencing fragment length and/or below
+    ## that size, to avoid intergenic regions under such a size
     gnrmskrng <- reduce(gnrmskrng, min.gapwidth=minfrglen)
     gnrmskrng <- sort(gnrmskrng)
     igcrng <- gaps(gnrmskrng)
@@ -477,6 +408,76 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     list(igcrng=igcrng, intrng=pintrons)
 }
 
+## private function .fetchRmsk()
+#' @importFrom AnnotationHub AnnotationHub query
+#' @importFrom GenomeInfoDb genome
+.fetchRmsk <- function(txdb) {
+    suppressMessages(ah <- AnnotationHub())
+    suppressMessages(ahres <- query(ah, c("UCSCRepeatMasker",genome(txdb)[1])))
+    mt <- gregexpr(pattern=" \\([A-Za-z0-9]+\\) ", ahres$title)
+    ahresdates <- substr(ahres$title, unlist(mt)+2,
+                            unlist(mt)+vapply(mt, attr, "match.length",
+                                            FUN.VALUE = integer(1L)) - 3)
+    ahresdates <- as.Date(paste0("1", ahresdates), "%d%b%Y")
+    ## in case > 1 RM annotations available, pick the most recent one
+    suppressMessages(rmskdb <- ahres[[which.max(ahresdates)]])
+    names(rmskdb) <- mcols(rmskdb) <- NULL
+    return(rmskdb)
+}
+
+## private function .collectDiagn()
+#' @importFrom BiocGenerics path
+#' @importFrom methods new
+.collectDiagn <- function(dxBAMs, bfl, minfrglen, singleEnd, txdb, strandMode,
+                    stdChrom, yieldSize, igcintrng, exbytx, tx2gene, verbose) {
+    if (verbose)
+        message("Collecting diagnostics")
+    igcpct <- vapply(dxBAMs, function(x)  ## intergenic %
+        100 * x$nigcaln / x$naln, FUN.VALUE = numeric(1L))
+    intpct <- vapply(dxBAMs, function(x)  ## intronic %
+        100 * x$nintaln / x$naln, FUN.VALUE = numeric(1L))
+    scjpct <- vapply(dxBAMs, function(x)  ## splice-compatible junction %
+        100 * x$nscjaln / x$naln, FUN.VALUE = numeric(1L))
+    scepct <- vapply(dxBAMs, function(x)  ## splice-compatible exonic %
+        100 * x$nscealn / x$naln, FUN.VALUE = numeric(1L))
+    sccpct <- vapply(dxBAMs, function(x) ##njunc() splice-compatible junction %
+        100 * x$nsccaln / x$naln, FUN.VALUE = numeric(1L))
+    igcfrglen.mean <- vapply(dxBAMs, function(x) mean(x$igcfrglen),
+                                FUN.VALUE = numeric(1L))
+    intfrglen.mean <- vapply(dxBAMs, function(x) mean(x$intfrglen),
+                                FUN.VALUE = numeric(1L))
+    scjfrglen.mean <- vapply(dxBAMs, function(x) mean(x$scjfrglen),
+                                FUN.VALUE = numeric(1L))
+    scefrglen.mean <- vapply(dxBAMs, function(x) mean(x$scefrglen),
+                                FUN.VALUE = numeric(1L))
+    strness <- vapply(dxBAMs, function(x) x$strness, FUN.VALUE = numeric(1L))
+    snames <- gsub(".bam", "", names(igcpct))
+    if (any(duplicated(snames))) {
+        stopifnot(identical(names(bfl),  names(igcpct)))
+        snames <- path(bfl)
+    }
+    dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct,SCC=sccpct,
+                    IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
+                    SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
+                    STRAND=strness, row.names=snames)
+    igcfrglen <- lapply(dxBAMs, function(x) x$igcfrglen)
+    intfrglen <- lapply(dxBAMs, function(x) x$intfrglen)
+    scjfrglen <- lapply(dxBAMs, function(x) x$scjfrglen)
+    scefrglen <- lapply(dxBAMs, function(x) x$scefrglen)
+    names(igcfrglen) <- gsub(".bam", "", names(igcfrglen))
+    names(intfrglen) <- gsub(".bam", "", names(intfrglen))
+    names(scjfrglen) <- gsub(".bam", "", names(scjfrglen))
+    names(scefrglen) <- gsub(".bam", "", names(scefrglen))
+    readLength <- as.integer(minfrglen)
+    if (!singleEnd)
+        readLength <- as.integer(readLength / 2)
+    new("gDNAx", bfl=bfl, txdbpkg=txdb$packageName, singleEnd=singleEnd,
+        strandMode=strandMode, stdChrom=stdChrom, readLength=readLength,
+        yieldSize=yieldSize, diagnostics=dx, igcfrglen=igcfrglen,
+        intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen,
+        intergenic=igcintrng$igcrng, intronic=igcintrng$intrng,
+        transcripts=exbytx, tx2gene=tx2gene)
+}
 
 #' Plot diagnostics
 #'
@@ -521,51 +522,38 @@ setMethod("plot", signature(x="gDNAx"),
 function(x, group=1L, labelpoints=FALSE, ...) {
     if (nrow(getDx(x)) == 0)
         stop("no diagnostics available in the input 'gDNAx' object.")
-
     dx <- getDx(x)
     grp <- .setColorGrouping(group, dx)
     group <- grp$group
     grpcol <- grp$col
-
-    # par(mfrow=c(3, 2), mar=c(5, 5, 2, 2), xpd=FALSE)
+    xlab <- "Intergenic alignments (%)"
     par(oma = c(4,1,1,1), mfrow=c(2, 2), mar=c(5, 5, 2, 2), xpd=FALSE)
     ## IGC x SCJ
-    plot(dx$IGC, dx$SCJ, panel.first=grid(), las=1,
-        xlab="Intergenic alignments (%)",
-        ylab="Splice-comp. junction aln. (%)", 
-        col=grpcol[as.integer(group)], ...)
-    if (labelpoints) {
-        pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
-        text(dx$IGC, dx$SCJ+dx$SCE, as.character(seq_len(nrow(dx))), 
-            cex=0.5, pos=pos)
-    }
-
-    ## IGC x SCE
-    plot(dx$IGC, dx$SCE, panel.first=grid(), las=1,
-        xlab="Intergenic alignments (%)",
-        ylab="Splice-comp. exonic aln. (%)", 
-        col=grpcol[as.integer(group)], ...)
+    plot(dx$IGC, dx$SCJ, panel.first=grid(), col=grpcol[as.integer(group)],
+         xlab=xlab, ylab="Splice-comp. junction aln. (%)", las=1, ...)
     if (labelpoints) {
         pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
         text(dx$IGC, dx$SCJ+dx$SCE, as.character(seq_len(nrow(dx))),
             cex=0.5, pos=pos)
     }
-
+    ## IGC x SCE
+    plot(dx$IGC, dx$SCE, panel.first=grid(), las=1, xlab=xlab,
+        ylab="Splice-comp. exonic aln. (%)",col=grpcol[as.integer(group)], ...)
+    if (labelpoints) {
+        pos <- setNames(thigmophobe(dx$IGC, dx$SCJ+dx$SCE), rownames(x))
+        text(dx$IGC, dx$SCJ+dx$SCE, as.character(seq_len(nrow(dx))),
+            cex=0.5, pos=pos)
+    }
     ## IGC x INT
-    plot(dx$IGC, dx$INT, panel.first=grid(), las=1,
-        xlab="Intergenic alignments (%)",
+    plot(dx$IGC, dx$INT, panel.first=grid(), las=1, xlab=xlab,
         ylab="Intronic alignments (%)", col=grpcol[as.integer(group)], ...)
     if (labelpoints) {
         pos <- setNames(thigmophobe(dx$IGC, dx$INT), rownames(x))
         text(dx$IGC, dx$INT, as.character(seq_len(nrow(dx))), cex=0.5, pos=pos)
     }
-
-    xrng <- range(dx$SCJ)
-    yrng <- range(dx$SCE)
     ## STRANDEDNESS
     if (!all(is.na(dx$STRAND))) {
-        plot(dx$IGC, dx$STRAND, panel.first=grid(), las=1,
-            xlab="Intergenic alignments (%)",
+        plot(dx$IGC, dx$STRAND, panel.first=grid(), las=1, xlab=xlab,
             ylab="Strandedness", col=grpcol[as.integer(group)], ...)
         if (labelpoints) {
             pos <- setNames(thigmophobe(dx$IGC, dx$STRAND), rownames(x))
@@ -573,15 +561,12 @@ function(x, group=1L, labelpoints=FALSE, ...) {
                 cex=0.5, pos=pos)
         }
     }
-    
     if (is.factor(group)) {
-        par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), 
-            new = TRUE)
+        par(fig = c(0,1,0,1), oma = c(0,0,0,0), mar = c(0,0,0,0), new = TRUE)
         plot(0, 0, type = 'l', bty = 'n', xaxt = 'n', yaxt = 'n')
         legend("bottom", levels(group), fill=grpcol, inset=0,
             bg="white", xpd=NA, horiz = TRUE)
     }
-
 })
 
 ## private function .setColorGrouping()

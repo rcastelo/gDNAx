@@ -60,7 +60,6 @@
 filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         param=ScanBamParam(), yieldSize=1000000, verbose=TRUE,
                         BPPARAM=SerialParam(progressbar=verbose)) {
-
     bfl <- object@bfl
     singleEnd <- object@singleEnd
     strandMode <- object@strandMode
@@ -69,57 +68,44 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     int <- object@intronic
     tx <- object@transcripts
     tx2gene <- object@tx2gene
-
-    # if (is.na(strandMode))
-    #     strandMode <- 1L
-    
     if (!file.exists(path))
         stop(sprintf("path %s does not exist.", path))
-
     if (txflag == 0) {
-        messalntype <- paste("No alignment type selected in argument",
-                            "'txflag'. Please use the function",
-                            "'filterBAMtxFlag()' to select at least one.",
-                            sep=" ")
-        stop(messalntype)
+        stop("No alignment type selected in argument 'txflag'. Please use ",
+            "the function 'filterBAMtxFlag()' to select at least one.")
     }
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- lapply(bfl, function(x, ys) {
                             yieldSize(x) <- ys
                             x
                         }, yieldSize)
-
     flag0 <- scanBamFlag(isUnmappedQuery=FALSE)
     what0 <- c("rname", "strand", "pos", "cigar", "qname")
     if (singleEnd)
-        bamWhat(param) <- setdiff(bamWhat(param),
-                                    c("groupid", "mate_status"))
+        bamWhat(param) <- setdiff(bamWhat(param), c("groupid", "mate_status"))
     else {
         flag0 <- scanBamFlag(isPaired=TRUE, hasUnmappedMate=FALSE,
                              isUnmappedQuery=FALSE)
         what0 <- c(what0, "flag", "groupid", "mate_status")
     }
     param <- GenomicAlignments:::.normargParam(param, flag0, what0)
-
     if (verbose)
         message("Start processing BAM file(s)")
-
-    out.stats <- NULL
+    out.st <- NULL
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
-        out.stats <- bplapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
-                            path=path, txflag=txflag, singleEnd=singleEnd,
-                            strandMode=strandMode, stdChrom=stdChrom,
-                            tx2gene=tx2gene, param=param, verbose=verbose,
-                            BPPARAM=BPPARAM)
+        out.st <- bplapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
+                    path=path, txflag=txflag, singleEnd=singleEnd,
+                    strandMode=strandMode, stdChrom=stdChrom, tx2gene=tx2gene,
+                    param=param, verbose=verbose, BPPARAM=BPPARAM)
     } else
-        out.stats <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
-                            path=path, txflag=txflag, singleEnd=singleEnd,
-                            strandMode=strandMode, stdChrom=stdChrom,
-                            tx2gene=tx2gene, param=param, verbose=verbose)
+      out.st <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int,tx=tx,path=path,
+                    txflag=txflag, singleEnd=singleEnd, strandMode=strandMode,
+                    stdChrom=stdChrom, tx2gene=tx2gene, param=param,
+                    verbose=verbose)
 
-    out.stats <- data.frame(do.call("rbind", out.stats))
-    out.stats
+    out.st <- data.frame(do.call("rbind", out.st))
+    out.st
 }
 
 #' @importFrom BiocGenerics basename path
@@ -184,21 +170,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     verbose <- get("verbose", envir=parent.frame(n))
     statsenvname <- get("statsenvname", envir=parent.frame(n))
     statsenv <- get(statsenvname, envir=parent.frame(n))
-    seqlengths <- seqlengths(bf)
-    if (!is.null(seqlengths)) {
-        bad <- setdiff(levels(x$rname), names(seqlengths))
-        if (length(bad) > 0) {
-            bad <- paste(bad, collapse="' '")
-            msg <- sprintf(paste("'rname' lengths not in BamFile header;",
-                                "seqlengths not used\n  file: %s\n  missing",
-                                "rname(s): '%s'", sep=" "), path(bf), bad)
-            warning(msg)
-            seqlengths <- NULL
-        }
-    }
-    gal <- GAlignments(seqnames=x$rname, pos=x$pos,
-                        cigar=x$cigar, strand=x$strand,
-                        seqlengths=seqlengths)
+    seqlengths <- .getSeqlen(bf, x)
+    gal <- GAlignments(seqnames=x$rname, pos=x$pos, cigar=x$cigar,
+                        strand=x$strand, seqlengths=seqlengths)
     stopifnot(nrow(x) == length(gal)) ## QC
     cnames <- setdiff(c(bamWhat(param), bamTag(param)),
                         c("rname", "pos", "cigar", "strand"))
@@ -207,6 +181,50 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         colnames(dtf) <- cnames
         mcols(gal) <- dtf
     }
+    gal <- .makeGAlPE(singleEnd, param, strandMode, gal)
+    if (stdChrom)
+        gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+    gal <- .matchSeqinfo(gal, tx, verbose)
+    
+    alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx,
+                            tx2gene, singleEnd)
+    mask <- alntype$mask
+    envstats <- get("stats", envir=statsenv)
+    envstats <- envstats + alntype$stats
+    assign("stats", envstats, envir=statsenv)
+    if (verbose) {
+        messwhalnstr <- paste(alntype$whalnstr, collapse=", ")
+        message(sprintf("%d alignments processed, %d (%.2f%%) %s written",
+                        envstats["NALN"], sum(envstats[-1]),
+                        100*sum(envstats[-1])/envstats["NALN"], messwhalnstr))
+    }
+    mt <- match(x$qname, mcols(first(gal))$qname)
+    mask <- mask[mt]
+    mask
+}
+
+## private function .getSeqlen()
+#' @importFrom BiocGenerics path
+#' @importFrom GenomeInfoDb seqlengths
+.getSeqlen <- function(bf, x) {
+    seqlengths <- seqlengths(bf)
+    if (!is.null(seqlengths)) {
+        bad <- setdiff(levels(x$rname), names(seqlengths))
+        if (length(bad) > 0) {
+            bad <- paste(bad, collapse="' '")
+            msg <- sprintf(paste("'rname' lengths not in BamFile header;",
+                                "seqlengths not used\n  file: %s\n  missing",
+                                "rname(s): '%s'", sep=" "), path(bf), bad)
+          warning(msg)
+          seqlengths <- NULL
+        }
+    }
+    return(seqlengths)
+}
+
+## private function .getStats()
+#' @importFrom Rsamtools bamWhat bamTag
+.makeGAlPE <- function(singleEnd, param, strandMode, gal) {
     if (!singleEnd) {
         use.mcols <- setdiff(c(bamWhat(param), bamTag(param)),
                             c("rname", "pos", "cigar", "strand"))
@@ -216,9 +234,12 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         makeGALP <- GenomicAlignments:::.make_GAlignmentPairs_from_GAlignments
         gal <- makeGALP(gal, strandMode2, use.mcols=use.mcols)
     }
-    if (stdChrom)
-        gal <- keepStandardChromosomes(gal, pruning.mode="fine")
-    gal <- .matchSeqinfo(gal, tx, verbose)
+    return(gal)
+}
+
+## private function .getalntype()
+.getalntype <- function(gal, txflag, igc, int, strandMode, tx,
+                        tx2gene, singleEnd) {
     mask <- rep(FALSE, length(gal))
     whalnstr <- character(0)
     stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L)
@@ -237,7 +258,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction") ||
         testBAMtxFlag(txflag, "isSpliceCompatibleExonic")) {
         scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
-                                fragmentsLen=FALSE)
+                               fragmentsLen=FALSE)
         if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction")) {
             mask <- mask | scoaln$scjmask
             whalnstr <- c(whalnstr, "SCJ")
@@ -249,22 +270,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
             stats["NSCE"] <- sum(scoaln$scemask)
         }
     }
-    envstats <- get("stats", envir=statsenv)
-    envstats <- envstats + stats
-    assign("stats", envstats, envir=statsenv)
-
-    if (verbose) {
-        messwhalnstr <- paste(whalnstr, collapse=", ")
-        message(sprintf("%d alignments processed, %d (%.2f%%) %s written",
-                        envstats["NALN"], sum(envstats[-1]),
-                        100*sum(envstats[-1])/envstats["NALN"],
-                        messwhalnstr))
-    }
-    mt <- match(x$qname, mcols(first(gal))$qname)
-    mask <- mask[mt]
-
-    mask
+    return(list(mask=mask, whalnstr=whalnstr, stats=stats))
 }
+
 
 TXFLAG_BITNAMES <- c("isIntergenic",
                     "isIntronic",
