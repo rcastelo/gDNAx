@@ -511,7 +511,11 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' # Getting information about the gDNA concentrations of each BAM file
 #' pdat <- LiYu22phenoData(bamfiles)
 #' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' # Getting the 'gDNAx' object. Can be done using the commented code
+#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' 
+#' # Here to reduce example running time, the 'gDNAx' object is loaded
+#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 #' 
 #' # plot gDNA diagnostic measures
 #' plot(gdnax, group=pdat$gDNA, pch=19)
@@ -629,7 +633,11 @@ function(x, group=1L, labelpoints=FALSE, ...) {
 #' # Getting information about the gDNA concentrations of each BAM file
 #' pdat <- LiYu22phenoData(bamfiles)
 #' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' # Getting the 'gDNAx' object. Can be done using the commented code
+#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' 
+#' # Here to reduce example running time, the 'gDNAx' object is loaded
+#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 #' 
 #' # plot origin of alignments per sample
 #' plotAlnOrigins(gdnax, group=pdat$gDNA)
@@ -676,13 +684,12 @@ plotAlnOrigins <- function(x, group=1L) {
 #' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 #' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 #' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
+#' # Getting the 'gDNAx' object. Can be done using the commented code
+#' # bamfiles <- LiYu22subsetBAMfiles()
+#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 #' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' # Here to reduce example running time, the 'gDNAx' object is loaded
+#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 #' 
 #' # plot fragments length distributions
 #' plotFrgLength(gdnax)

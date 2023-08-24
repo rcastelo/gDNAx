@@ -33,13 +33,12 @@
 #' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 #' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 #' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
+#' # Getting the 'gDNAx' object. Can be done using the commented code
+#' # bamfiles <- LiYu22subsetBAMfiles()
+#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 #' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+#' # Here to reduce example running time, the 'gDNAx' object is loaded
+#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 #' 
 #' # Filtering splice-compatible alignments and writing them into new BAM files
 #' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
@@ -311,19 +310,6 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'
 #'
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
-#' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
 #' # Filtering splice-compatible alignments and writing them into new BAM files
 #' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
 #'                        isSpliceCompatibleExonic=FALSE,
@@ -360,19 +346,6 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
 #' @importFrom bitops bitAnd
 #'
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
-#' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
 #' # Filtering splice-compatible alignments and writing them into new BAM files
 #' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
 #'                        isSpliceCompatibleExonic=TRUE)
