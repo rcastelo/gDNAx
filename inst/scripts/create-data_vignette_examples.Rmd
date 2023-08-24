@@ -53,7 +53,14 @@ txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
 
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=strandM$strandMode)
-saveRDS(gdnax, file = "gdnax.rds")
+
+# Reducing size of gdnax object
+gdnax2 <- gdnax
+gdnax2@intergenic <- gdnax2@intergenic[1:10]
+gdnax2@intronic <- gdnax2@intronic[1:10]
+gdnax2@transcripts <- GRangesList()
+gdnax2@tx2gene <- ""
+saveRDS(gdnax2, file = "gdnax.rds")
 
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
                         isSpliceCompatibleExonic=TRUE)

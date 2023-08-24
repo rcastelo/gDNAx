@@ -86,9 +86,11 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 features <- range(exonsBy(txdb, by="gene"))
+features <- features[1:100] # subset to reduce running time
 
 # Retrieving BAM files
 bamfiles <- LiYu22subsetBAMfiles()
+bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
 
 # Getting information about the gDNA concentrations of each BAM file
 pdat <- LiYu22phenoData(bamfiles)

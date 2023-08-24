@@ -33,12 +33,10 @@
 #' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 #' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 #' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # bamfiles <- LiYu22subsetBAMfiles()
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
+#' # Getting the 'gDNAx' object
+#' bamfiles <- LiYu22subsetBAMfiles()
+#' bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 #' 
 #' # Filtering splice-compatible alignments and writing them into new BAM files
 #' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,

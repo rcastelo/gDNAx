@@ -101,9 +101,6 @@ txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 # Retrieving BAM files
 bamfiles <- LiYu22subsetBAMfiles()
 
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
-
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 gdnax
 
@@ -112,13 +109,14 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
+# Getting the 'gDNAx' object. Can be done using the commented code
+# bamfiles <- LiYu22subsetBAMfiles()
+# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
+# Here to reduce example running time, the 'gDNAx' object is loaded
+gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+# Getting statistics
 dx <- getDx(gdnax)
 head(dx)
 
@@ -127,13 +125,12 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
+# Getting the 'gDNAx' object. Can be done using the commented code
+# bamfiles <- LiYu22subsetBAMfiles()
+# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
-
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+# Here to reduce example running time, the 'gDNAx' object is loaded
+gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 gdnax
 
 library(gDNAinRNAseqData)
@@ -141,13 +138,13 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
+# Getting the 'gDNAx' object. Can be done using the commented code
+# bamfiles <- LiYu22subsetBAMfiles()
+# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
+# Here to reduce example running time, the 'gDNAx' object is loaded
+gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 igc <- getIgc(gdnax)
 head(igc, n=3)
 
@@ -156,13 +153,13 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
+# Getting the 'gDNAx' object. Can be done using the commented code
+# bamfiles <- LiYu22subsetBAMfiles()
+# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
+# Here to reduce example running time, the 'gDNAx' object is loaded
+gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 int <- getInt(gdnax)
 head(int, n=3)
 

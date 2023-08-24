@@ -91,12 +91,9 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
-# Retrieving BAM files
+# Getting the 'gDNAx' object
 bamfiles <- LiYu22subsetBAMfiles()
-
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
-
+bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
 # Filtering splice-compatible alignments and writing them into new BAM files
@@ -107,37 +104,11 @@ fstats <- filterBAMtx(gdnax, path=dir, txflag=fbf)
 list.files(dir, pattern="*.bam$")
 
 
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
-
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
-
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-
 # Filtering splice-compatible alignments and writing them into new BAM files
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
                        isSpliceCompatibleExonic=FALSE,
                        isIntronic=FALSE,
                        isIntergenic = FALSE)
-
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Retrieving BAM files
-bamfiles <- LiYu22subsetBAMfiles()
-
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
-
-gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
 # Filtering splice-compatible alignments and writing them into new BAM files
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
