@@ -1,0 +1,63 @@
+---
+title: "Creating data for the gDNAx package vignette"
+author:
+- name: Beatriz Calvo-Serra
+  affiliation:
+  - &id Dept. of Experimental and Health Sciences, Universitat Pompeu Fabra, Barcelona, Spain
+  email: beatriz.calvo@upf.edu
+- name: Robert Castelo
+  affiliation: *id
+  email: robert.castelo@upf.edu
+vignette: >
+  %\VignetteIndexEntry{Creating data for the gDNAx package vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This code uses the `gDNAx` package to filter splice-compatible alignments
+and write them into new BAM files, as shown in the package vignette. In order
+to prevent writing new files when creating the vignette, as well as reducing
+package build time, the step of filtering of BAM files is not executed in the
+vignette. Instead, only the final statistics are shown in the vignette.
+Here, we perform the filtering of BAM files to obtain these final statistics
+and show them in the vignette.
+
+The code used here is the same as the one showed in the package vignette.
+
+```{r}
+library(gDNAinRNAseqData)
+
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+bamfiles
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+pdat
+
+library(gDNAx)
+
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+
+strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
+
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=strandM$strandMode)
+
+fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+                        isSpliceCompatibleExonic=TRUE)
+fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
+saveRDS(fstats, file = "filterBAMtx_fstats.rds")
+
+```
+

@@ -212,7 +212,8 @@ and write them into new BAM files. To do so, first we set the type
 of alignments to be included in the BAM file using `filterBAMtxFlag()`, and
 then we call the `filterBAMtx()` function. For instance, to keep only reads
 expected to come from RNA, we can set `isSpliceCompatibleJunction` and
-`isSpliceCompatibleExonic` to `TRUE`. The resulting BAM files are
+`isSpliceCompatibleExonic` to `TRUE`. The resulting BAM files, which are
+located in the directory indicated in the `path` argument, are
 useful for performing downstream analyses, such as differential expression
 analysis, without the effect of gDNA contamination.
 
@@ -220,17 +221,15 @@ analysis, without the effect of gDNA contamination.
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
                         isSpliceCompatibleExonic=TRUE)
 fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
-list.files(".", pattern="*.bam$")
+fstats
+# list.files(".", pattern="*.bam$")
 ```
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-                        isSpliceCompatibleExonic=TRUE)
-tmpdir <- tempdir()
-fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
-list.files(tmpdir, pattern="*.bam$")
-```
-```{r}
+
+```{r, echo=FALSE}
+fstats_f <- file.path(system.file("extdata", package="gDNAx"),
+                      "filterBAMtx_fstats.rds")
+fstats <- readRDS(fstats_f)
 fstats
 ```
 
