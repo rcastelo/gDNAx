@@ -502,7 +502,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' 
 #' @examples
 #' # plot gDNA diagnostic measures
-#' plot(gdnax, group=rep(c(0L, 1L, 10L), each = 3), pch=19)
+#' plot(gdnax, group=pdat$gDNA, pch=19)
 #' 
 #' @export
 #' @rdname gDNAdx
@@ -607,7 +607,7 @@ function(x, group=1L, labelpoints=FALSE, ...) {
 #' 
 #' @examples
 #' # plot origin of alignments per sample
-#' plotAlnOrigins(gdnax, group=rep(c(0L, 1L, 10L), each = 3))
+#' plotAlnOrigins(gdnax, group=pdat$gDNA)
 #' 
 #' @export
 #' @rdname gDNAdx
