@@ -102,63 +102,15 @@ txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 bamfiles <- LiYu22subsetBAMfiles()
 
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-gdnax
-
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Getting the 'gDNAx' object. Can be done using the commented code
-# bamfiles <- LiYu22subsetBAMfiles()
-# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-
-# Here to reduce example running time, the 'gDNAx' object is loaded
-gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 
 # Getting statistics
 dx <- getDx(gdnax)
 head(dx)
 
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Getting the 'gDNAx' object. Can be done using the commented code
-# bamfiles <- LiYu22subsetBAMfiles()
-# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-
-# Here to reduce example running time, the 'gDNAx' object is loaded
-gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 gdnax
-
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Getting the 'gDNAx' object. Can be done using the commented code
-# bamfiles <- LiYu22subsetBAMfiles()
-# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-
-# Here to reduce example running time, the 'gDNAx' object is loaded
-gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 
 igc <- getIgc(gdnax)
 head(igc, n=3)
-
-library(gDNAinRNAseqData)
-
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-# Getting the 'gDNAx' object. Can be done using the commented code
-# bamfiles <- LiYu22subsetBAMfiles()
-# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-
-# Here to reduce example running time, the 'gDNAx' object is loaded
-gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 
 int <- getInt(gdnax)
 head(int, n=3)

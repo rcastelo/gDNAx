@@ -3,11 +3,17 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
+
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
+
 
 test_input_errors_identifyStrandMode <- function() {
 
     # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
+    # bamfiles <- LiYu22subsetBAMfiles()
     
     ## bamfiles
     bamfiles2 <- c("invented_sample.bam")
@@ -39,7 +45,7 @@ test_input_errors_identifyStrandMode <- function() {
 test_output_identifyStrandMode <- function() {
 
     # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
+    # bamfiles <- LiYu22subsetBAMfiles()
     
     suppressWarnings(strandM <- identifyStrandMode(bamfiles, txdb,
                                                     singleEnd=FALSE))

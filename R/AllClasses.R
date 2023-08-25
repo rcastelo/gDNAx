@@ -66,7 +66,6 @@
 #' bamfiles <- LiYu22subsetBAMfiles()
 #' 
 #' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' gdnax
 #'
 #' @name gDNAx-class
 #' @rdname gDNAx-class
@@ -93,18 +92,6 @@ setClass("gDNAx",
 #' @param x A \linkS4class{gDNAx} object.
 #'
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # bamfiles <- LiYu22subsetBAMfiles()
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' 
 #' # Getting statistics
 #' dx <- getDx(gdnax)
 #' head(dx)
@@ -122,17 +109,6 @@ setMethod("getDx", "gDNAx",
 #' @param object A \linkS4class{gDNAx} object.
 #'
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # bamfiles <- LiYu22subsetBAMfiles()
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
 #' gdnax
 #' 
 #' @importFrom methods show
@@ -168,18 +144,6 @@ setMethod("show", "gDNAx",
 #' @return \code{features()}: A \code{GRanges} object with intergenic ranges.
 #' 
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # bamfiles <- LiYu22subsetBAMfiles()
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' 
 #' igc <- getIgc(gdnax)
 #' head(igc, n=3)
 #' 
@@ -198,18 +162,6 @@ setMethod("getIgc", "gDNAx",
 #' @return \code{features()}: A \code{GRanges} object with intron ranges.
 #' 
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # bamfiles <- LiYu22subsetBAMfiles()
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' 
 #' int <- getInt(gdnax)
 #' head(int, n=3)
 #' 

@@ -500,25 +500,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom stats setNames
 #' 
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
-#' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' 
 #' # plot gDNA diagnostic measures
-#' plot(gdnax, group=pdat$gDNA, pch=19)
+#' plot(gdnax, group=rep(c(0L, 1L, 10L), each = 3), pch=19)
 #' 
 #' @export
 #' @rdname gDNAdx
@@ -622,25 +605,8 @@ function(x, group=1L, labelpoints=FALSE, ...) {
 #' @importFrom stats density setNames
 #' 
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
-#' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' 
 #' # plot origin of alignments per sample
-#' plotAlnOrigins(gdnax, group=pdat$gDNA)
+#' plotAlnOrigins(gdnax, group=rep(c(0L, 1L, 10L), each = 3))
 #' 
 #' @export
 #' @rdname gDNAdx
@@ -679,18 +645,6 @@ plotAlnOrigins <- function(x, group=1L) {
 #' @param x A 'gDNAx' object.
 #'
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' 
-#' # Getting the 'gDNAx' object. Can be done using the commented code
-#' # bamfiles <- LiYu22subsetBAMfiles()
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' 
 #' # plot fragments length distributions
 #' plotFrgLength(gdnax)
 #' 

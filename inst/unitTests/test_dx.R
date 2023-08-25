@@ -4,15 +4,19 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
+# Retrieving BAM files
+bamfiles <- LiYu22subsetBAMfiles()
 
+# Getting information about the gDNA concentrations of each BAM file
+pdat <- LiYu22phenoData(bamfiles)
 
 test_download_LiYu22 <- function() {
     
-    # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
-    
-    # Getting information about the gDNA concentrations of each BAM file
-    pdat <- LiYu22phenoData(bamfiles)
+    # # Retrieving BAM files
+    # bamfiles <- LiYu22subsetBAMfiles()
+    # 
+    # # Getting information about the gDNA concentrations of each BAM file
+    # pdat <- LiYu22phenoData(bamfiles)
     
     checkEquals(length(bamfiles), 9L)
     checkEquals(dim(pdat), c(9,1))
@@ -24,8 +28,8 @@ test_download_LiYu22 <- function() {
 
 test_output_gDNAdx <- function() {
     
-    # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
+    # # Retrieving BAM files
+    # bamfiles <- LiYu22subsetBAMfiles()
     
     gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
     dx <- getDx(gdnax)
@@ -47,8 +51,8 @@ test_output_gDNAdx <- function() {
 
 test_input_errors <- function() {
     
-    # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
+    # # Retrieving BAM files
+    # bamfiles <- LiYu22subsetBAMfiles()
     
     ## bamfiles
     bamfiles2 <- c("invented_sample.bam")
@@ -85,9 +89,9 @@ library(GenomicRanges)
 
 test_minFrgLen <- function() {
     
-    # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
-  
+    # # Retrieving BAM files
+    # bamfiles <- LiYu22subsetBAMfiles()
+    
     bfl <- gDNAx:::.checkBamFileListArgs(bamfiles, singleEnd=FALSE,
                                          fragments=FALSE, yieldSize=100000L)
     strandMode <- gDNAx:::.checkStrandMode(NA)
@@ -99,7 +103,7 @@ test_minFrgLen <- function() {
 test_dx_computation <- function() {
     
     # Retrieving BAM files
-    bamfiles <- LiYu22subsetBAMfiles()
+    # bamfiles <- LiYu22subsetBAMfiles()
     
     bfl <- bamfiles
     singleEnd=FALSE

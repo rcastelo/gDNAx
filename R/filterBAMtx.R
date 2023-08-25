@@ -344,10 +344,7 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
 #' @importFrom bitops bitAnd
 #'
 #' @examples
-#' # Filtering splice-compatible alignments and writing them into new BAM files
-#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-#'                        isSpliceCompatibleExonic=TRUE)
-#' fSCJ <- testBAMtxFlag(fbf, "isSpliceCompatibleJunction")
+#' testBAMtxFlag(fbf, "isSpliceCompatibleJunction")
 #'                        
 #' @export
 #' @rdname filterBAMtx
