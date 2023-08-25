@@ -47,7 +47,7 @@ test_output_identifyStrandMode <- function() {
     # Retrieving BAM files
     # bamfiles <- LiYu22subsetBAMfiles()
     
-    suppressWarnings(strandM <- identifyStrandMode(bamfiles, txdb,
+    suppressWarnings(strandM <- identifyStrandMode(bamfiles[1:2], txdb,
                                                     singleEnd=FALSE))
     
     checkTrue(is(strandM, "list"))
@@ -61,7 +61,7 @@ test_output_identifyStrandMode <- function() {
     
     # strandMode1 + strandMode2 + ambig should add 1
     checkEquals(as.vector(rowSums(strandM$Strandedness[,1:3])),
-                rep(1, length(bamfiles)), tolerance = 1.0e-3)
+                rep(1, length(bamfiles[1:2])), tolerance = 1.0e-3)
 }
 
 test_decideStrandMode <- function() {

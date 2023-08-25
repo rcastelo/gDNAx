@@ -57,15 +57,17 @@
 #' transcripts and genes according to an 'TxDb' object.
 #'
 #' @examples
-#' library(gDNAinRNAseqData)
+#' # Getting the 'gDNAx' object. Can be done using the commented code:
+#' # library(gDNAinRNAseqData)
+#' # library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' # txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' # bamfiles <- LiYu22subsetBAMfiles() # Retrieving BAM files
+#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 #' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' # Here to reduce example running time, the 'gDNAx' object is loaded
+#' gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
+#' gdnax
 #' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
-#' 
-#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 #'
 #' @name gDNAx-class
 #' @rdname gDNAx-class

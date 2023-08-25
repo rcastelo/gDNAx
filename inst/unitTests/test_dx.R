@@ -31,11 +31,11 @@ test_output_gDNAdx <- function() {
     # # Retrieving BAM files
     # bamfiles <- LiYu22subsetBAMfiles()
     
-    gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
+    gdnax <- gDNAdx(bamfiles[1:2], txdb, singleEnd=FALSE, strandMode=NA)
     dx <- getDx(gdnax)
     
     checkTrue(is(gdnax, "gDNAx"))
-    checkEquals(dim(dx), c(9,10))
+    checkEquals(dim(dx), c(2,10))
     checkTrue(is(dx, "data.frame"))
     
     # If strandMode=NA, output of strandedness should be NA
