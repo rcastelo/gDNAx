@@ -93,7 +93,7 @@ txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
 # Getting the 'gDNAx' object
 bamfiles <- LiYu22subsetBAMfiles()
-bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
+bamfiles <- bamfiles[c(1,7)] # using a subset of samples
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
 # Filtering splice-compatible alignments and writing them into new BAM files

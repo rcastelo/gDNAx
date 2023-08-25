@@ -83,10 +83,7 @@
 #' 
 #' # Retrieving BAM files
 #' bamfiles <- LiYu22subsetBAMfiles()
-#' bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
-#' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
+#' bamfiles <- bamfiles[c(1,7)] # using a subset of samples
 #' 
 #' strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
 #' strandM$strandMode
@@ -101,7 +98,7 @@
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers
 #' @export
-#' @rdname identifyStrandMode
+#' @rdname strandedness
 
 identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                                 yieldSize=1000000L, verbose=TRUE,
@@ -368,20 +365,8 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' expected for a non-stranded RNA-seq library.
 #' 
 #' @examples
-#' library(gDNAinRNAseqData)
-#' 
-#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 #' features <- range(exonsBy(txdb, by="gene"))
-#' features <- features[1:100] # subset to reduce running time
-#' 
-#' # Retrieving BAM files
-#' bamfiles <- LiYu22subsetBAMfiles()
-#' bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
-#' 
-#' # Getting information about the gDNA concentrations of each BAM file
-#' pdat <- LiYu22phenoData(bamfiles)
-#' 
+#' features <- features[1:100]
 #' sByFeature <- strnessByFeature(bamfiles, features, singleEnd=FALSE,
 #'                             strandMode=2L)
 #' sByFeature
@@ -391,7 +376,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @importFrom SummarizedExperiment SummarizedExperiment
 #' @importFrom methods is
 #' @export
-#' @rdname strnessByFeature
+#' @rdname strandedness
 strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
                             yieldSize=1000000L, ambiguous=FALSE, p=0.6,
                             verbose=TRUE,

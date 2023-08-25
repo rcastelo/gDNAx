@@ -2,6 +2,7 @@
 % Please edit documentation in R/strandedness.R
 \name{identifyStrandMode}
 \alias{identifyStrandMode}
+\alias{strnessByFeature}
 \title{Identify strandMode}
 \usage{
 identifyStrandMode(
@@ -10,6 +11,18 @@ identifyStrandMode(
   singleEnd = TRUE,
   stdChrom = TRUE,
   yieldSize = 1000000L,
+  verbose = TRUE,
+  BPPARAM = SerialParam(progressbar = verbose)
+)
+
+strnessByFeature(
+  bfl,
+  features,
+  singleEnd = TRUE,
+  strandMode = 1L,
+  yieldSize = 1000000L,
+  ambiguous = FALSE,
+  p = 0.6,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -33,8 +46,9 @@ page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
 from the package \code{GenomeInfoDb} for further
 information.}
 
-\item{yieldSize}{(Default 5e5) Number of records to read from each input
-BAM file.}
+\item{yieldSize}{(Default 5e5) Field inherited from
+\code{\link[Rsamtools]{BamFile}}. The BAM is read by chunks.
+\code{yieldSize} represents the number of records to read for each chunk.}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
@@ -44,6 +58,26 @@ to configure the parallel execution of the code. By default, a
 \linkS4class{SerialParam} object is used, which does not use any
 parallelization, with the flag \code{progress=TRUE} to show progress
 through the calculations.}
+
+\item{features}{A \code{GRanges} or \code{GRangesList} object with
+annotations of features (e.g. genes, transcripts, etc.).}
+
+\item{strandMode}{(Default 1L) Numeric vector which can take values 0, 1,
+or 2. The strand mode is a per-object switch on
+\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+objects that controls the behavior of the strand getter. See
+\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
+is ignored.}
+
+\item{ambiguous}{(Default FALSE) Logical value indicating if reads that
+overlap a region with features annotated to both strands should be included
+in the strandedness value computation.}
+
+\item{p}{(Default 0.6) Numeric value for the exact binomial test performed
+for the strandedness value of each feature, representing the hypothesized
+probability of success (i.e. the strandedness value expected for a 
+non-stranded dataset).}
 }
 \value{
 A \link[base:list]{list} object with two elements:
@@ -66,11 +100,24 @@ A \link[base:list]{list} object with two elements:
         to the strand of its second alignment. "ambiguous": alignments
         aligned to regions with transcripts in both strands.
 }
+
+A \linkS4class{SummarizedExperiment} with three assays:
+\itemize{
+  \item "strness": contains strandedness values for each feature and sample.
+  \item "counts": number of reads aligning to each feature on the same 
+         strand (according to \code{strandMode}).
+  \item "counts_invstrand": number of reads aligning to each feature but on 
+         the opposite strand (according to \code{strandMode}).
+}
 }
 \description{
 Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
 the proportion of reads aligning to the same or opposite strand as
 transcripts in the annotations.
+
+Compute strandedness for each feature in RNA-seq data samples based on
+the proportion of reads aligning to the same strand as feature annotations
+in relation to the total number of reads aligning to that feature.
 }
 \details{
 If the value in the "strandMode1" column is > 0.90, \code{strandMode} is set
@@ -90,6 +137,14 @@ read strand is the opposite to the one of the read.
 
 A subset of 200,000 alignments overlapping gene annotations are used to
 compute strandedness.
+
+Strandedness is computed for each feature and BAM file according to the
+\code{strandMode} specified in case of paired-end data. For single-end,
+the original strand of reads is used. All alignments from the BAM file(s) 
+are considered to compute the strandedness.
+
+The \code{p} value should be close to 0.5, representing the strandedness
+expected for a non-stranded RNA-seq library.
 }
 \examples{
 library(gDNAinRNAseqData)
@@ -99,14 +154,17 @@ txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 
 # Retrieving BAM files
 bamfiles <- LiYu22subsetBAMfiles()
-bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
-
-# Getting information about the gDNA concentrations of each BAM file
-pdat <- LiYu22phenoData(bamfiles)
+bamfiles <- bamfiles[c(1,7)] # using a subset of samples
 
 strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
 strandM$strandMode
 head(strandM$Strandedness)
 
+
+features <- range(exonsBy(txdb, by="gene"))
+features <- features[1:100]
+sByFeature <- strnessByFeature(bamfiles, features, singleEnd=FALSE,
+                            strandMode=2L)
+sByFeature
 
 }

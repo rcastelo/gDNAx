@@ -101,7 +101,8 @@ transcripts and genes according to an 'TxDb' object.}
 # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
 
 # Here to reduce example running time, the 'gDNAx' object is loaded
-gdnax <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
+gdnax_f <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
+gdnax <- readRDS(gdnax_f)
 gdnax
 
 
