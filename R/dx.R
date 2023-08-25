@@ -51,6 +51,7 @@
 #' 
 #' # Retrieving BAM files
 #' bamfiles <- LiYu22subsetBAMfiles()
+#' bamfiles <- bamfiles[c(1,4,7)] # using a subset of samples
 #' 
 #' # Getting information about the gDNA concentrations of each BAM file
 #' pdat <- LiYu22phenoData(bamfiles)

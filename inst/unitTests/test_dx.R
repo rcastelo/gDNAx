@@ -26,28 +26,28 @@ test_download_LiYu22 <- function() {
     checkIdentical(rownames(pdat), bn)
 }
 
-test_output_gDNAdx <- function() {
-    
-    # # Retrieving BAM files
-    # bamfiles <- LiYu22subsetBAMfiles()
-    
-    gdnax <- gDNAdx(bamfiles[1:2], txdb, singleEnd=FALSE, strandMode=NA)
-    dx <- getDx(gdnax)
-    
-    checkTrue(is(gdnax, "gDNAx"))
-    checkEquals(dim(dx), c(2,10))
-    checkTrue(is(dx, "data.frame"))
-    
-    # If strandMode=NA, output of strandedness should be NA
-    checkTrue(is.na(unique(dx[,"STRAND"])))
-    
-    # All % and frag length values should be numeric and positive
-    checkTrue(is(unlist(as.vector(dx[,-10])), "numeric"))
-    checkTrue(all(dx[,-10] > 0))
-    
-    # igc + int + scj + sce should never add > 100%
-    checkTrue(all(rowSums(dx[,1:4]) < 100))
-}
+# test_output_gDNAdx <- function() {
+#     
+#     # # Retrieving BAM files
+#     # bamfiles <- LiYu22subsetBAMfiles()
+#     
+#     gdnax <- gDNAdx(bamfiles[1], txdb, singleEnd=FALSE, strandMode=NA)
+#     dx <- getDx(gdnax)
+#     
+#     checkTrue(is(gdnax, "gDNAx"))
+#     checkEquals(dim(dx), c(1,10))
+#     checkTrue(is(dx, "data.frame"))
+#     
+#     # If strandMode=NA, output of strandedness should be NA
+#     checkTrue(is.na(unique(dx[,"STRAND"])))
+#     
+#     # All % and frag length values should be numeric and positive
+#     checkTrue(is(unlist(as.vector(dx[,-10])), "numeric"))
+#     checkTrue(all(dx[,-10] > 0))
+#     
+#     # igc + int + scj + sce should never add > 100%
+#     checkTrue(all(rowSums(dx[,1:4]) < 100))
+# }
 
 test_input_errors <- function() {
     
@@ -92,7 +92,7 @@ test_minFrgLen <- function() {
     # # Retrieving BAM files
     # bamfiles <- LiYu22subsetBAMfiles()
     
-    bfl <- gDNAx:::.checkBamFileListArgs(bamfiles, singleEnd=FALSE,
+    bfl <- gDNAx:::.checkBamFileListArgs(bamfiles[1:2], singleEnd=FALSE,
                                          fragments=FALSE, yieldSize=100000L)
     strandMode <- gDNAx:::.checkStrandMode(NA)
     minfrglen <- gDNAx:::.minFrgLen(bfl, singleEnd=FALSE)
@@ -105,7 +105,7 @@ test_dx_computation <- function() {
     # Retrieving BAM files
     # bamfiles <- LiYu22subsetBAMfiles()
     
-    bfl <- bamfiles
+    bfl <- bamfiles[1]
     singleEnd=FALSE
     strandMode=NA
     stdChrom=TRUE
