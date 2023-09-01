@@ -220,11 +220,11 @@ analysis, without the effect of gDNA contamination.
 ```{r, eval=FALSE}
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
                         isSpliceCompatibleExonic=TRUE)
-fstats <- filterBAMtx(gdnax, path=".", txflag=fbf)
+tmpdir <- tempdir()
+fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
+# list.files(tmpdir, pattern="*.bam$")
 fstats
-# list.files(".", pattern="*.bam$")
 ```
-
 
 ```{r, echo=FALSE}
 fstats_f <- file.path(system.file("extdata", package="gDNAx"),
