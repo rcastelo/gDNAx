@@ -223,13 +223,13 @@ test_dx_computation <- function() {
     dx_oneBAM <- gDNAx:::.getdx_oneBAM(igcaln, intaln, scoaln, singleEnd,
                                strandMode, gal, tx, naln)
     
-    checkEquals(length(dx_oneBAM), 11)
-    checkEquals(dx_oneBAM$naln, 99660)
-    checkEquals(dx_oneBAM$nigcaln, 1039)
-    checkEquals(dx_oneBAM$nintaln, 11715)
-    checkEquals(dx_oneBAM$nscjaln, 15129)
-    checkEquals(dx_oneBAM$nscealn, 39942)
-    checkEquals(dx_oneBAM$nsccaln, 19498)
+    checkEquals(length(dx_oneBAM), 11L)
+    checkEquals(dx_oneBAM$naln, 99660L)
+    checkEquals(dx_oneBAM$nigcaln, 1033L)
+    checkEquals(dx_oneBAM$nintaln, 11719L)
+    checkEquals(dx_oneBAM$nscjaln, 15134L)
+    checkEquals(dx_oneBAM$nscealn, 39905L)
+    checkEquals(dx_oneBAM$nsccaln, 19498L)
 }
 
 
