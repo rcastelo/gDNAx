@@ -152,7 +152,10 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
                                         use.names=FALSE)
     }
     if (stdChrom)
-        gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+        if (singleEnd)
+            gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
+        else
+            gal <- keepStandardChromosomes(gal, pruning.mode="fine")
 
     if (verbose)
         message(sprintf("Processing alignments from %s", basename(path(bf))))

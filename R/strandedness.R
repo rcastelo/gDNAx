@@ -177,7 +177,10 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
             gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
                                       use.names=FALSE)
         if (stdChrom)
-            gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+            if (singleEnd)
+                gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
+            else
+                gal <- keepStandardChromosomes(gal, pruning.mode="fine")
         
         if (length(gal) == 0)
             break

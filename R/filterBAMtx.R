@@ -180,7 +180,11 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     }
     gal <- .makeGAlPE(singleEnd, param, strandMode, gal)
     if (stdChrom)
-        gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+        if (singleEnd)
+            gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
+        else
+            gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+    
     gal <- .matchSeqinfo(gal, tx, verbose)
     
     alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx,
