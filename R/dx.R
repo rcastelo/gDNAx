@@ -195,7 +195,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     nscealn <- sum(scoaln$scemask)
     nsccaln <- sum(scoaln$sccmask)
     
-    igcfrglen <- scjfrglen <- scefrglen <- sicfrglen <- NA_integer_
+    igcfrglen <- intfrglen <- scjfrglen <- scefrglen <- NA_integer_
     if (!singleEnd) { ## fragments length from paired-end reads
         igcfrglen <- igcaln$igcfrglen
         intfrglen <- intaln$intfrglen

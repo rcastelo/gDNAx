@@ -80,7 +80,7 @@
         on.exit(close(bf), add=TRUE)
         if (!isOpen(bf))
             bf <- open(bf)
-        testPairedEndBam(bf)
+        suppressMessages(testPairedEndBam(bf))
     }
     peflag <- unname(vapply(bfl, testpe, FUN.VALUE = logical(1L)))
     if (singleEnd && !all(!peflag))
