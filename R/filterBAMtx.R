@@ -199,7 +199,11 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         envstats["NALN"], sum(envstats[-1]),
                         100*sum(envstats[-1])/envstats["NALN"], messwhalnstr))
     }
-    mt <- match(x$qname, mcols(first(gal))$qname)
+    
+    if (singleEnd)
+        mt <- match(x$qname, mcols(gal)$qname)
+    else
+        mt <- match(x$qname, mcols(first(gal))$qname)
     mask <- mask[mt]
     mask
 }
