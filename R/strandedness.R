@@ -451,8 +451,8 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     on.exit(close(bf))
     while (length(gal <- do.call(readfun, c(list(file = bf), list(param=param),
                                 list(strandMode=strandMode)[strand_arg])))) {
-        # gal <- .matchSeqinfo(gal, features, verbose)
-        seqlevelsStyle(gal) <- seqlevelsStyle(features)[1]
+        gal <- .matchSeqinfo(gal, features, verbose)
+        ## seqlevelsStyle(gal) <- seqlevelsStyle(features)[1]
         
         ## Finding overlaps using ovUnion method
         suppressWarnings(thisov <- findOverlaps(gal, features, 

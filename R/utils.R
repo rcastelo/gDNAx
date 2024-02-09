@@ -197,6 +197,9 @@
                 "GAlignmentsList" %in% class(gal) ||
                 "TxDb" %in% class(tx)) ## QC
 
+    if (seqlevelsStyle(gal)[1] == seqlevelsStyle(tx)[1])
+      return(gal)
+
     seqlevelsStyle(gal) <- seqlevelsStyle(tx)[1]
     slengal <- seqlengths(gal)
     slentx <- seqlengths(tx)
