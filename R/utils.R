@@ -10,21 +10,37 @@
                 "of BAM file names or a 'BamFileList' object")
     
     if (is.character(bfl)) {
-        mask <- vapply(bfl, FUN = file.exists, FUN.VALUE = logical(1))
+        mask <- vapply(bfl, FUN=file.exists, FUN.VALUE=logical(1))
         if (any(!mask)) {
             whmiss <- paste(paste("  ", bfl[!mask]), collapse="\n")
             stop(sprintf("The following input BAM files cannot be found:\n%s",
-                        whmiss))
+                         whmiss))
         }
         if (any(duplicated(bfl))) {
             whdupl <- paste(paste("  ", bfl[duplicated(bfl)]), collapse="\n")
             stop(sprintf("The following input BAM files are duplicated:\n%s",
-                        whdupl))
+                         whdupl))
+        }
+        fsize <- vapply(bfl, FUN=file.size, FUN.VALUE=numeric(1))
+        mask <- fsize > 0
+        if (any(!mask)) {
+            whzero <- paste(paste("  ", bfl[!mask]), collapse="\n")
+            stop(sprintf("The following input BAM files have 0 bytes:\n%s",
+                         whzero))
         }
     }
     
     if (!is(bfl, "BamFileList"))
         bfl <- BamFileList(bfl, asMates=!singleEnd, yieldSize=yieldSize)
+    else {
+        fsize <- vapply(names(bfl), FUN=file.size, FUN.VALUE=numeric(1))
+        mask <- fsize > 0
+        if (any(!mask)) {
+            whzero <- paste(paste("  ", bfl[!mask]), collapse="\n")
+            stop(sprintf("The following input BAM files have 0 bytes:\n%s",
+                         whzero))
+        }
+    }
     
     if (singleEnd) {
         if (all(isTRUE(asMates(bfl))))

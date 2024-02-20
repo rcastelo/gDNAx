@@ -78,7 +78,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     .checkOtherArgs(singleEnd, stdChrom)
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
-                                            verbose=verbose)
+                                             verbose=verbose)
     if (verbose)
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
     minfrglen <- .minFrgLen(bfl, singleEnd)
@@ -96,8 +96,8 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     tx2gene[mask] <- genetxid$GENEID[mask]
     rm(genetxid)
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE, isProperPair=!singleEnd,
-                            isSecondaryAlignment=FALSE, isDuplicate=FALSE,
-                            isNotPassingQualityControls=FALSE)
+                           isSecondaryAlignment=FALSE, isDuplicate=FALSE,
+                           isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
     
     if (verbose)
@@ -169,7 +169,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     intaln <- .intAlignments(gal, int, strandMode,fragmentsLen=TRUE,nfrgs=1000)
     ## splice-compatible alignments
     scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
-                            fragmentsLen=TRUE, nfrgs=1000)
+                             fragmentsLen=TRUE, nfrgs=1000)
     
     ## Assigning reads simultaneously identified as IGC/INT and SCE/SCJ
     ## as SCE/SCJ
@@ -272,7 +272,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 
     ## alignments compatible with splicing over the given transcriptome
     ovtxenc <- encodeOverlaps(grglist(gal), tx, hits=ovtx,
-                                flip.query.if.wrong.strand=ignore.strand)
+                              flip.query.if.wrong.strand=ignore.strand)
     masksplovtx <- isCompatibleWithSplicing(ovtxenc)
     maskskpovtx <- isCompatibleWithSkippedExons(ovtxenc)
     junencpat <- "2--|--2|3--|--3"
