@@ -92,14 +92,15 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
         out.st <- bplapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
-                    path=path, txflag=txflag, singleEnd=singleEnd,
-                    strandMode=strandMode, stdChrom=stdChrom, tx2gene=tx2gene,
-                    param=param, verbose=verbose, BPPARAM=BPPARAM)
+                           path=path, txflag=txflag, singleEnd=singleEnd,
+                           strandMode=strandMode, stdChrom=stdChrom,
+                           tx2gene=tx2gene, param=param, verbose=verbose,
+                           BPPARAM=BPPARAM)
     } else
       out.st <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int,tx=tx,path=path,
-                    txflag=txflag, singleEnd=singleEnd, strandMode=strandMode,
-                    stdChrom=stdChrom, tx2gene=tx2gene, param=param,
-                    verbose=verbose)
+                       txflag=txflag, singleEnd=singleEnd, strandMode=strandMode,
+                       stdChrom=stdChrom, tx2gene=tx2gene, param=param,
+                       verbose=verbose)
 
     out.st <- data.frame(do.call("rbind", out.st))
     out.st
@@ -107,14 +108,14 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 #' @importFrom BiocGenerics basename path
 #' @importFrom S4Vectors FilterRules
-#' @importFrom Rsamtools filterBam
+#' @importFrom Rsamtools filterBam sortBam indexBam
 .filter_oneBAMtx <- function(bf, igc, int, tx, path, txflag, singleEnd,
                             strandMode, stdChrom, tx2gene, param, verbose) {
 
     onesuffix <- c(isIntergenic="IGC",
-                    isIntronic="INT",
-                    isSpliceCompatibleJunction="SCJ",
-                    isSpliceCompatibleExonic="SCE")
+                   isIntronic="INT",
+                   isSpliceCompatibleJunction="SCJ",
+                   isSpliceCompatibleExonic="SCE")
     suffix <- "_"
     for (flag in TXFLAG_BITNAMES)
         if (testBAMtxFlag(txflag, flag))
@@ -132,12 +133,21 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (verbose)
         message(sprintf("Processing %s", basename(path(bf))))
     filter <- FilterRules(list(BAMtx=.bamtx_filter))
-    ff <- filterBam(bf, tempfile(), param=param, filter=filter,
-                    indexDestination=TRUE)
-    file.copy(ff, bamoutfile)
-    file.remove(ff)
-    file.copy(paste0(ff, ".bai"), baioutfile)
-    file.remove(paste0(ff, ".bai"))
+    ## ff <- filterBam(bf, tempfile(), param=param, filter=filter,
+    ff <- filterBam(bf, bamoutfile, param=param, filter=filter,
+                    indexDestination=FALSE)
+    if (!singleEnd) {
+      ## need to do this on the same directory of the output BAM file
+      ## to avoid breaking Rsamtools::filterBam() with 'indexDestination=TRUE'
+      ## when /tmp is in a different partition as the output BAM file
+      ## leading to the error "cannot rename file .. invalid cross-device link"
+      tmpfname <- basename(tempfile())
+      sortBam(bamoutfile, file.path(dirname(bamoutfile), tmpfname))
+      file.rename(file.path(dirname(bamoutfile), paste0(tmpfname, ".bam")),
+                            bamoutfile)
+    }
+    baifname <- indexBam(bamoutfile)
+    file.rename(baifname, baioutfile)
     stats <- get("stats", envir=get(statsenvname))
     for (flag in TXFLAG_BITNAMES)
         if (!testBAMtxFlag(txflag, flag))
@@ -150,7 +160,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom GenomeInfoDb seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
-    n <- 5  ## this number is derived from the fact that .scj_filter()
+    n <- 5  ## this number is derived from the fact that .bamtx_filter()
             ## is called by 'eval()' within the 'filterBam()' function
             ## and allows one to access the objects in the scope of
             ## .filter_oneBAMtx() through the environment 'parent.frame(n)'
@@ -178,7 +188,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         colnames(dtf) <- cnames
         mcols(gal) <- dtf
     }
-    gal <- .makeGAlPE(singleEnd, param, strandMode, gal)
+    gal <- .makeGALPE(singleEnd, param, strandMode, gal)
     if (stdChrom)
         if (singleEnd)
             gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
@@ -188,7 +198,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     gal <- .matchSeqinfo(gal, tx, verbose)
     
     alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx,
-                            tx2gene, singleEnd)
+                           tx2gene, singleEnd)
     mask <- alntype$mask
     envstats <- get("stats", envir=statsenv)
     envstats <- envstats + alntype$stats
@@ -218,8 +228,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         if (length(bad) > 0) {
             bad <- paste(bad, collapse="' '")
             msg <- sprintf(paste("'rname' lengths not in BamFile header;",
-                                "seqlengths not used\n  file: %s\n  missing",
-                                "rname(s): '%s'", sep=" "), path(bf), bad)
+                                 "seqlengths not used\n  file: %s\n  missing",
+                                 "rname(s): '%s'", sep=" "), path(bf), bad)
           warning(msg)
           seqlengths <- NULL
         }
@@ -227,12 +237,12 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     return(seqlengths)
 }
 
-## private function .getStats()
+## private function .makeGALPE()
 #' @importFrom Rsamtools bamWhat bamTag
-.makeGAlPE <- function(singleEnd, param, strandMode, gal) {
+.makeGALPE <- function(singleEnd, param, strandMode, gal) {
     if (!singleEnd) {
         use.mcols <- setdiff(c(bamWhat(param), bamTag(param)),
-                            c("rname", "pos", "cigar", "strand"))
+                             c("rname", "pos", "cigar", "strand"))
         strandMode2 <- strandMode
         if (is.na(strandMode))
             strandMode2 <- 1L
@@ -263,7 +273,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction") ||
         testBAMtxFlag(txflag, "isSpliceCompatibleExonic")) {
         scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
-                               fragmentsLen=FALSE)
+                                 fragmentsLen=FALSE)
         if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction")) {
             mask <- mask | scoaln$scjmask
             whalnstr <- c(whalnstr, "SCJ")

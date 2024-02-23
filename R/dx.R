@@ -65,13 +65,13 @@
 #' @importFrom AnnotationDbi select
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
-#' @importFrom BiocParallel SerialParam bplapply bpnworkers
+#' @importFrom BiocParallel SerialParam bplapply bpnworkers bpprogressbar<-
 #' @importFrom methods new
 #' @export
 #' @rdname gDNAdx
 gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
-                    yieldSize=100000L, verbose=TRUE,
-                    BPPARAM=SerialParam(progressbar=verbose)) {
+                   yieldSize=100000L, verbose=TRUE,
+                   BPPARAM=SerialParam(progressbar=verbose)) {
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
     strandMode <- .checkStrandMode(strandMode)
@@ -79,10 +79,17 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
+    bpparsilent <- BPPARAM
+    bpprogressbar(bpparsilent) <- FALSE
+    peflag <- .allPairedEnd(bfl, singleEnd, bpparsilent)
+    rlens <- .readLengths(bfl, singleEnd)
+    maxfrglen <- max(rlens)
+    if (peflag)
+      maxfrglen <- 2 * peflag
+    ## minfrglen <- .minFrgLen(bfl, singleEnd)
     if (verbose)
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
-    minfrglen <- .minFrgLen(bfl, singleEnd)
-    igcintrng <- .fetchIGCandINTrng(txdb, minfrglen, stdChrom, strandMode)
+    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, stdChrom, strandMode)
     exbytx <- exonsBy(txdb, by="tx") ## fetch transcript annotations
     if (stdChrom) {
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
@@ -106,17 +113,19 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
         dxBAMs <- bplapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
-                    int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
-                    stdChrom=stdChrom,singleEnd=singleEnd,strandMode=strandMode,
-                    param=param, verbose=verbose, BPPARAM=BPPARAM)
+                           int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
+                           stdChrom=stdChrom,singleEnd=singleEnd,
+                           strandMode=strandMode, param=param,
+                           verbose=verbose, BPPARAM=BPPARAM)
     } else
         dxBAMs <- lapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
-                        int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
-                        stdChrom=stdChrom, singleEnd=singleEnd,
-                        strandMode=strandMode, param=param, verbose=verbose)
+                         int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
+                         stdChrom=stdChrom, singleEnd=singleEnd,
+                         strandMode=strandMode, param=param, verbose=verbose)
     
-    dxobj <- .collectDiagn(dxBAMs, bfl, minfrglen, singleEnd, txdb, strandMode,
-                    stdChrom, yieldSize, igcintrng, exbytx, tx2gene, verbose)
+    dxobj <- .collectDiagn(dxBAMs, bfl, rlens, singleEnd, txdb, strandMode,
+                           stdChrom, yieldSize, igcintrng, exbytx, tx2gene,
+                           verbose)
     dxobj
 }
 
@@ -256,7 +265,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicAlignments encodeOverlaps isCompatibleWithSplicing
 #' @importFrom GenomicAlignments isCompatibleWithSkippedExons
 .scoAlignments <- function(gal, tx, tx2gene, singleEnd, strandMode,
-                            fragmentsLen, nfrgs=1000) {
+                           fragmentsLen, nfrgs=1000) {
     
     ignore.strand <- ifelse(is.na(strandMode), TRUE, FALSE)
     ## calculate overlaps between alignments and transcripts
@@ -302,7 +311,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     res <- list(scjmask=scjmask, scemask=scemask,
                 sccmask=sum(njunc(gal) > 0))
     res <- .getfrglen(singleEnd, fragmentsLen, res, gal, tx, ovscjtx, ovscetx, 
-                   strandMode, nfrgs)
+                      strandMode, nfrgs)
     res
 }
 
@@ -361,7 +370,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom GenomicRanges strand strand<- gaps intersect width setdiff
-.fetchIGCandINTrng <- function(txdb, minfrglen, stdChrom, strandMode) {
+.fetchIGCandINTrng <- function(txdb, maxfrglen, stdChrom, strandMode) {
     ## fetch ranges of annotated genes, discard gene information and project
     ## them into genomic coordinates. use exonsBy() instead of genes() to
     ## catch annotations of genes mapping to multiple sequences and including
@@ -389,7 +398,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
         pintrons <- setdiff(pintrons, gnrmskrng, ignore.strand=TRUE)
     if (stdChrom)
         pintrons <- keepStandardChromosomes(pintrons, pruning.mode="coarse")
-    pintrons <- pintrons[width(pintrons) >= minfrglen]
+    pintrons <- pintrons[width(pintrons) >= maxfrglen]
 
     ## put together gene and repeat annotations
     rmskrng <- reduce(rmskdb, ignore.strand=TRUE)
@@ -398,14 +407,14 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 
     ## fetch ranges of intergenic regions as those complementary to the
     ## previous genic and repeat ranges, collapsing neighboring ranges closer
-    ## to each other than the minimum sequencing fragment length and/or below
-    ## that size, to avoid intergenic regions under such a size
-    gnrmskrng <- reduce(gnrmskrng, min.gapwidth=minfrglen)
+    ## to each other than the maximum sequencing fragment length and/or below
+    ## that size, to avoid generating intergenic regions under such a size
+    gnrmskrng <- reduce(gnrmskrng, min.gapwidth=maxfrglen)
     gnrmskrng <- sort(gnrmskrng)
     igcrng <- gaps(gnrmskrng)
     igcrng <- igcrng[strand(igcrng) == "*"]
     igcrng <- sort(igcrng)
-    igcrng <- igcrng[width(igcrng) >= minfrglen]
+    igcrng <- igcrng[width(igcrng) >= maxfrglen]
     if (stdChrom)
         igcrng <- keepStandardChromosomes(igcrng, pruning.mode="coarse")
     
@@ -432,8 +441,9 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 ## private function .collectDiagn()
 #' @importFrom BiocGenerics path
 #' @importFrom methods new
-.collectDiagn <- function(dxBAMs, bfl, minfrglen, singleEnd, txdb, strandMode,
-                    stdChrom, yieldSize, igcintrng, exbytx, tx2gene, verbose) {
+.collectDiagn <- function(dxBAMs, bfl, readLength, singleEnd, txdb, strandMode,
+                          stdChrom, yieldSize, igcintrng, exbytx, tx2gene,
+                          verbose) {
     if (verbose)
         message("Collecting diagnostics")
     igcpct <- vapply(dxBAMs, function(x)  ## intergenic %
@@ -472,9 +482,6 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     names(intfrglen) <- gsub(".bam", "", names(intfrglen))
     names(scjfrglen) <- gsub(".bam", "", names(scjfrglen))
     names(scefrglen) <- gsub(".bam", "", names(scefrglen))
-    readLength <- as.integer(minfrglen)
-    if (!singleEnd)
-        readLength <- as.integer(readLength / 2)
     new("gDNAx", bfl=bfl, txdbpkg=txdb$packageName, singleEnd=singleEnd,
         strandMode=strandMode, stdChrom=stdChrom, readLength=readLength,
         yieldSize=yieldSize, diagnostics=dx, igcfrglen=igcfrglen,

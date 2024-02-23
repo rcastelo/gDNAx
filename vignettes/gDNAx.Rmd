@@ -104,6 +104,7 @@ Let's take a look at the `data.frame` with all strandedness values. The
 strandedness values are based on the proportion of reads aligning to the 
 same or opposite strand as transcripts in the annotations. See help page of
 `identifyStrandMode()` for more information.
+
 ```{r}
 strandM$Strandedness
 ```

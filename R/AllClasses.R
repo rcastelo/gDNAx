@@ -75,22 +75,22 @@
 #' @exportClass gDNAx
 setClass("gDNAx",
         representation(bfl="BamFileList",
-                        txdbpkg="character",
-                        singleEnd="logical",
-                        strandMode="integer",
-                        stdChrom="logical",
-                        readLength="integer",
-                        yieldSize="integer",
-                        diagnostics="data.frame",
-                        igcfrglen="list",
-                        intfrglen="list",
-                        scjfrglen="list",
-                        scefrglen="list",
-                        sicfrglen="list",
-                        intergenic="GRanges",
-                        intronic="GRanges",
-                        transcripts="GRangesList",
-                        tx2gene="character"))
+                       txdbpkg="character",
+                       singleEnd="logical",
+                       strandMode="integer",
+                       stdChrom="logical",
+                       readLength="integer",
+                       yieldSize="integer",
+                       diagnostics="data.frame",
+                       igcfrglen="list",
+                       intfrglen="list",
+                       scjfrglen="list",
+                       scefrglen="list",
+                       sicfrglen="list",
+                       intergenic="GRanges",
+                       intronic="GRanges",
+                       transcripts="GRangesList",
+                       tx2gene="character"))
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
@@ -125,14 +125,18 @@ setMethod("show", "gDNAx",
                 cat(class(object), "object\n")
                 cat(sprintf("# BAM files (%d): %s\n", length(object@bfl),
                             .pprintnames(names(object@bfl))))
-                if (object@singleEnd)
-                    cat(sprintf("# Library layout: single-end (%dnt)\n",
-                                object@readLength))
-                else {
-                    cat(sprintf("# Library layout: paired-end (2x%dnt)\n",
-                                object@readLength))
+                rlen <- object@readLength
+                urlen <- sort(unique(rlen))
+                rlenstr <- sprintf("%d (%s%dnt)", table(rlen),
+                                   ifelse(object@singleEnd, "", "2x"),
+                                   urlen)
+                rlenstr <- sprintf("%s %s",
+                                   ifelse(object@singleEnd, "single-end,",
+                                          "paired-end,"),
+                                   paste(rlenstr, collapse=", "))
+                cat(sprintf("# Library layout: %s\n", rlenstr))
+                if (!object@singleEnd)
                     cat(sprintf("# Strand mode: %d\n", object@strandMode))
-                }
                 if (object@stdChrom)
                     cat("# Sequences: only standard chromosomes\n")
                 else

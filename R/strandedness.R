@@ -101,8 +101,8 @@
 #' @rdname strandedness
 
 identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
-                                yieldSize=1000000L, verbose=TRUE,
-                                BPPARAM=SerialParam(progressbar=verbose)) {
+                               yieldSize=1000000L, verbose=TRUE,
+                               BPPARAM=SerialParam(progressbar=verbose)) {
     
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
@@ -139,8 +139,8 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                             verbose=verbose, BPPARAM=BPPARAM)
     } else
         strbysm <- lapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
-                            singleEnd=singleEnd, strandMode=1L, param=param,
-                            verbose=verbose)
+                          singleEnd=singleEnd, strandMode=1L, param=param,
+                          verbose=verbose)
     
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
@@ -242,7 +242,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     ## number of alignments aligned to correct strand of transcripts
     nalnst <- sum(!queryHits(ovtxaln) %in% ambaln)
     
-    ## number of alignments aligned to oposite strand of transcripts
+    ## number of alignments aligned to opposite strand of transcripts
     nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
     
     ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
@@ -255,7 +255,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         naln <- nalnst + nalnisst + length(ambaln)
         
         c("nalnst" = nalnst, "nalnisst" = nalnisst, "ambig" = length(ambaln),
-            "Nalignments" = naln)
+          "Nalignments" = naln)
         
     } else {
         ## strandedness value (according to strandMode specified) ignoring
@@ -439,7 +439,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
 #' @importFrom methods formalArgs
 #' @importFrom GenomeInfoDb seqlevelsStyle
 .strnessByF_oneBAM <- function(bf, features, singleEnd, strandMode=1L,
-                                param, ambiguous, p, verbose) {
+                               param, ambiguous, p, verbose) {
     if (isOpen(bf))
         close(bf)
     
@@ -450,15 +450,16 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     open(bf)
     on.exit(close(bf))
     while (length(gal <- do.call(readfun, c(list(file = bf), list(param=param),
-                                list(strandMode=strandMode)[strand_arg])))) {
+                                 list(strandMode=strandMode)[strand_arg])))) {
         gal <- .matchSeqinfo(gal, features, verbose)
         ## seqlevelsStyle(gal) <- seqlevelsStyle(features)[1]
         
         ## Finding overlaps using ovUnion method
         suppressWarnings(thisov <- findOverlaps(gal, features, 
                                                 ignore.strand=FALSE))
-        suppressWarnings(thisovinvs <- findOverlaps(invertStrand(gal), 
-                                                features, ignore.strand=FALSE))
+        suppressWarnings(thisovinvs <- findOverlaps(invertStrand(gal),
+                                                    features,
+                                                    ignore.strand=FALSE))
         ## Remove alignments overlapping > 1 feature
         r_to_keep <- which(countQueryHits(thisov) == 1L)
         thisov <- thisov[queryHits(thisov) %in% r_to_keep]
@@ -484,7 +485,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     pval <- .strness_binomtest(ov_c, ov_cinvs, p)
     
     strnessByF <- list(strness = strness, ov_c = ov_c, ov_cinvs = ov_cinvs,
-                        p.value = pval)
+                       p.value = pval)
     strnessByF
 }
 

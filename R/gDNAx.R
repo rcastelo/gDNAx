@@ -29,13 +29,10 @@
 #'
 #' \url{https://github.com/functionalgenomics/gDNAx}
 #' 
-#' 
-#' 
-#' 
-#' @docType package
 #' @name gDNAx-package
 #' @aliases gDNAx-package
 #' @aliases gDNAx
 #' @keywords package
+"_PACKAGE"
 
 NULL

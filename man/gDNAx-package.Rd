@@ -36,4 +36,21 @@ GitHub repository:
 
 \url{https://github.com/functionalgenomics/gDNAx}
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/functionalgenomics/gDNAx}
+  \item Report bugs at \url{https://github.com/functionalgenomics/gDNAx/issues}
+}
+
+}
+\author{
+\strong{Maintainer}: Beatriz Calvo-Serra \email{beatriz.calvo@upf.edu}
+
+Authors:
+\itemize{
+  \item Robert Castelo \email{robert.castelo@upf.edu}
+}
+
+}
 \keyword{package}

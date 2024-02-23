@@ -87,8 +87,9 @@
 ## input argument 'singleEnd'
 
 #' @importFrom Rsamtools yieldSize yieldSize<- testPairedEndBam
+#' @importFrom BiocParallel bpnworkers
 #' @importFrom S4Vectors unname
-.allPairedEnd <- function(bfl, singleEnd) {
+.allPairedEnd <- function(bfl, singleEnd, BPPARAM=SerialParam()) {
     testpe <- function(bf) {
         yieldSize <- yieldSize(bf)
         yieldSize(bf) <- 10000 ## use a small yieldSize for speed
@@ -98,12 +99,18 @@
             bf <- open(bf)
         suppressMessages(testPairedEndBam(bf))
     }
-    peflag <- unname(vapply(bfl, testpe, FUN.VALUE = logical(1L)))
-    if (singleEnd && !all(!peflag))
-        stop("Some BAM files are paired end, but 'singleEnd=TRUE'.")
+    peflag <- FALSE
+    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1)
+      peflag <- unlist(bplapply(bfl, testpe, BPPARAM=BPPARAM),
+                       use.names=FALSE)
+    else
+      peflag <- unname(vapply(bfl, testpe, FUN.VALUE = logical(1L)))
 
-    if (!singleEnd && !all(peflag))
-        stop("Some BAM files are single end, but 'singleEnd=FALSE'.")
+    if (singleEnd && any(peflag))
+        stop("Some BAM files are paired-end, but 'singleEnd=TRUE'.")
+
+    if (!singleEnd && any(!peflag))
+        stop("Some BAM files are single-end, but 'singleEnd=FALSE'.")
 
     peflag[1]
 }
@@ -115,7 +122,6 @@
 #' @importFrom S4Vectors unname
 .minFrgLen <- function(bfl, singleEnd) {
     stopifnot(length(bfl) > 0) ## QC
-    rlen <- rep(0L, length(bfl))
     peflag <- .allPairedEnd(bfl, singleEnd)
     qw <- function(bf) {
         yieldSize <- yieldSize(bf)
@@ -137,6 +143,36 @@
         allw <- allw * 2
 
     min(allw)
+}
+.readLengths <- function(bfl, singleEnd) {
+    stopifnot(length(bfl) > 0) ## QC
+    qw <- function(bf, singleEnd) { ## figure out most freq. query width in first 10K aln.
+        yieldSize <- yieldSize(bf)
+        yieldSize(bf) <- 10000 ## use a small yieldSize for speed
+        on.exit(yieldSize(bf) <- yieldSize)
+        on.exit(close(bf), add=TRUE)
+        if (!isOpen(bf))
+            bf <- open(bf)
+        ## here we do not do 'isDuplicate=FALSE' because it may slow down
+        ## the scanning by an order of magnitude
+        sbf <- scanBamFlag(isPaired=!singleEnd,
+                           isUnmappedQuery=FALSE,
+                           isSecondaryAlignment=FALSE,
+                           isNotPassingQualityControls=FALSE)
+        w <- scanBam(bf, param=ScanBamParam(flag=sbf, what="qwidth"))[[1]]$qwidth
+        tab <- table(w)
+        w <- as.integer(names(tab[which.max(tab)]))
+        w
+    }
+    rlen <- unname(vapply(bfl, qw, singleEnd=singleEnd, FUN.VALUE=integer(1L)))
+    ## sometimes shorter read lengths arise from read trimming, we identify
+    ## those shorter lengths as less frequent in the whole dataset and replace
+    ## them by the most frequent one, which should be the original layout
+    freq <- table(rlen) / length(rlen)
+    highfreqrlen <- as.integer(names(freq)[which.max(freq)])
+    lowfreqrlen <- as.integer(names(freq)[freq < 0.1])
+    rlen[rlen %in% lowfreqrlen] <- highfreqrlen
+    as.integer(rlen)
 }
 
 ## private function .ppprintnames() for pretty-printing
@@ -291,7 +327,7 @@
     hits
 }
 
-## private function .checkOtherArg()
+## private function .checkOtherArgs()
 .checkOtherArgs <- function(singleEnd, stdChrom) {
     if (!is.logical(singleEnd))
         stop("'singleEnd' must be a logical value")
