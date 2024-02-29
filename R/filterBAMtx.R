@@ -290,9 +290,10 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 
 TXFLAG_BITNAMES <- c("isIntergenic",
-                    "isIntronic",
-                    "isSpliceCompatibleJunction",
-                    "isSpliceCompatibleExonic")
+                     "isIntronic",
+                     "isSpliceCompatibleJunction",
+                     "isSpliceCompatibleExonic",
+                     "isInStrandedWindow")
 
 ## adapted from Rsamtools::scanBamFlag()
 
@@ -300,14 +301,15 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'
 #' Use 'filterBAMtxFlag()' to set what types of alignment in a BAM 
 #' file should be filtered using the function 'filterBAMtx()',
-#' among being splice-compatible with one or more junctions,
-#' splice-compatible exonic, intronic or intergenic.
+#' among being splice-compatible with one or more exon-exon junctions,
+#' splice-compatible exonic, splice-compatible exonic in a window, intronic or
+#' intergenic.
 #' 
 #' @param isSpliceCompatibleJunction (Default FALSE) Logical value indicating
 #'        if spliced alignments overlapping a transcript in a 
 #'        "splice compatible" way should be included in the BAM file. For
 #'        paired-end reads, one or both alignments must have one or more splice
-#'        site(s) compatible with splicing. See 
+#'        sites compatible with splicing. See 
 #'        \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.
 #' 
 #' @param isSpliceCompatibleExonic (Default FALSE) Logical value indicating
@@ -318,6 +320,13 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'        they are "splice compatible". See 
 #'        \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.
 #'        
+#' @param isInStrandedWindow (Default FALSE) Logical value
+#'        indicating whether an alignment occurs in a stranded windows. More
+#'        concretely, for each alignment, strandedness will be tested with
+#'        respect to the rest of the alignments occurring in overlapping
+#'        windows. This filter will assign a TRUE value when those tests are
+#'        passed.
+#'
 #' @param isIntronic (Default FALSE) Logical value indicating if alignments
 #'        mapping to introns should be included in the BAM file.
 #'
@@ -327,15 +336,17 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'
 #' @examples
 #' # Filtering splice-compatible alignments and writing them into new BAM files
-#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=FALSE,
 #'                        isSpliceCompatibleExonic=FALSE,
+#'                        isInStrandedWindow=FALSE,
 #'                        isIntronic=FALSE,
-#'                        isIntergenic = FALSE)
+#'                        isIntergenic=FALSE)
 #' 
 #' @export
 #' @rdname filterBAMtx
 filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
                             isSpliceCompatibleExonic=FALSE,
+                            isInStrandedWindow=FALSE,
                             isIntronic=FALSE,
                             isIntergenic=FALSE) {
     flag <- S4Vectors:::makePowersOfTwo(length(TXFLAG_BITNAMES))
@@ -347,8 +358,8 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
     if (length(args) == 0)
         args <- formals(filterBAMtxFlag)
 
-    idx <- names(args[vapply(args, function(x) !is.na(x) && x, 
-                                FUN.VALUE = logical(1L))])
+    idx <- names(args[vapply(args, function(x) !is.na(x) && x,
+                             FUN.VALUE = logical(1L))])
     keep <- Reduce("+", flag[names(flag) %in% idx], 0L)
 
     keep
