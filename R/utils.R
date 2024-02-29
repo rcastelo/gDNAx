@@ -84,7 +84,7 @@
 ## private function .checkPairedEnd()
 ## checks whether BAM files are all single end
 ## or paired end, and whether that matches the
-## input argument 'singleEnd'
+## input argument 'singleEnd', if it is not missing
 
 #' @importFrom Rsamtools yieldSize yieldSize<- testPairedEndBam
 #' @importFrom BiocParallel bpnworkers
@@ -106,11 +106,13 @@
     else
       peflag <- unname(vapply(bfl, testpe, FUN.VALUE = logical(1L)))
 
-    if (singleEnd && any(peflag))
-        stop("Some BAM files are paired-end, but 'singleEnd=TRUE'.")
+    if (!missing(singleEnd)) {
+      if (singleEnd && any(peflag))
+          stop("Some BAM files are paired-end, but 'singleEnd=TRUE'.")
 
-    if (!singleEnd && any(!peflag))
-        stop("Some BAM files are single-end, but 'singleEnd=FALSE'.")
+      if (!singleEnd && any(!peflag))
+          stop("Some BAM files are single-end, but 'singleEnd=FALSE'.")
+    }
 
     peflag[1]
 }
@@ -242,15 +244,19 @@
 ## private function .matchSeqinfo()
 
 #' @importFrom GenomeInfoDb seqlengths keepSeqlevels seqlevelsStyle
-#' @importFrom GenomeInfoDb seqinfo seqinfo<- seqlevelsStyle<- seqlevels
+#' @importFrom GenomeInfoDb seqlevelsStyle<- seqinfo seqinfo<- seqlevels
+#' @importFrom GenomeInfoDb genome genome<-
 .matchSeqinfo <- function(gal, tx, verbose=TRUE) {
     stopifnot("GAlignments" %in% class(gal) ||
-                "GAlignmentPairs" %in% class(gal) ||
-                "GAlignmentsList" %in% class(gal) ||
-                "TxDb" %in% class(tx)) ## QC
+               "GAlignmentPairs" %in% class(gal) ||
+               "GAlignmentsList" %in% class(gal) ||
+               "TxDb" %in% class(tx)) ## QC
 
-    if (seqlevelsStyle(gal)[1] == seqlevelsStyle(tx)[1])
+    if (length(intersect(seqlevelsStyle(gal), seqlevelsStyle(tx))) > 0)
       return(gal)
+
+    if (is.na(genome(gal)[1]))
+      genome(gal) <- genome(tx)
 
     seqlevelsStyle(gal) <- seqlevelsStyle(tx)[1]
     slengal <- seqlengths(gal)
@@ -261,27 +267,27 @@
     if (any(slengal != slentx)) {
         if (sum(slengal != slentx) == 1 && verbose) {
             difflonechr <- paste("Chromosome %s has different lengths",
-                                "between the input BAM and the TxDb",
-                                "annotation package. This chromosome will",
-                                "be discarded from further analysis",
-                                sep=" ")
+                                 "between the input BAM and the TxDb",
+                                 "annotation package. This chromosome will",
+                                 "be discarded from further analysis",
+                                 sep=" ")
             whdifflonechr <- paste(commonchr[which(slengal != slentx)],
                                     collapse=", ")
             message(sprintf(difflonechr, whdifflonechr))
         } else if (verbose) {
             difflmultichr <- paste("Chromosomes %s have different lengths",
-                                    "between the input BAM and the TxDb",
-                                    "annotation package. These chromosomes",
-                                    "will be discarded from further analysis",
-                                    sep=" ")
+                                   "between the input BAM and the TxDb",
+                                   "annotation package. These chromosomes",
+                                   "will be discarded from further analysis",
+                                   sep=" ")
             whdifflmultichr <- paste(commonchr[which(slengal != slentx)],
                                     collapse=", ")
             message(sprintf(difflmultichr, whdifflmultichr))
         }
         if (sum(slengal == slentx) == 0)
-            stop("None of the chromosomes in the input BAM file has the ",
-                    "same length as the chromosomes in the input TxDb ",
-                    "annotation package.")
+            stop("None of the chromosomes in the input BAM file have the ",
+                 "same length as the chromosomes in the input TxDb ",
+                 "annotation package.")
         gal <- keepSeqlevels(gal, commonchr[slengal == slentx],
                             pruning.mode="coarse")
         commonchr <- commonchr[slengal == slentx]
@@ -319,11 +325,11 @@
     stopifnot(nRnode(hits1) == nRnode(hits2))
     stopifnot(isSorted(from(hits1)) == isSorted(from(hits2)))
     hits <- c(Hits(from=from(hits1), to=to(hits1),
-                    nLnode=nLnode(hits1)+nLnode(hits2),
-                    nRnode=nRnode(hits1), sort.by.query=isSorted(from(hits1))),
+                   nLnode=nLnode(hits1)+nLnode(hits2),
+                   nRnode=nRnode(hits1), sort.by.query=isSorted(from(hits1))),
               Hits(from=from(hits2)+nLnode(hits1), to=to(hits2),
-                    nLnode=nLnode(hits1)+nLnode(hits2),
-                    nRnode=nRnode(hits2), sort.by.query=isSorted(from(hits2))))
+                   nLnode=nLnode(hits1)+nLnode(hits2),
+                   nRnode=nRnode(hits2), sort.by.query=isSorted(from(hits2))))
     hits
 }
 
