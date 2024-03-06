@@ -75,7 +75,6 @@ pdat <- LiYu22phenoData(bamfiles)
 pdat
 ```
 
-
 ## Identifying `strandMode`
 
 The `strandMode` of a sample depends on the library protocol used: it can be
@@ -205,7 +204,6 @@ igc <- getIgc(gdnax)
 head(igc, n=3)
 ```
 
-
 # Filter alignments according to an annotation
 
 The package also provides functions to filter splice-compatible alignments
@@ -220,7 +218,7 @@ analysis, without the effect of gDNA contamination.
 
 ```{r, eval=FALSE}
 fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-                        isSpliceCompatibleExonic=TRUE)
+                       isSpliceCompatibleExonic=TRUE)
 tmpdir <- tempdir()
 fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
 # list.files(tmpdir, pattern="*.bam$")

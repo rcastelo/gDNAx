@@ -15,6 +15,7 @@ Imports:
     methods,
     BiocGenerics,
     BiocParallel,
+    matrixStats,
     Biostrings,
     S4Vectors,
     IRanges,

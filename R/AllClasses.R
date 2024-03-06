@@ -74,23 +74,23 @@
 #' @rdname gDNAx-class
 #' @exportClass gDNAx
 setClass("gDNAx",
-        representation(bfl="BamFileList",
-                       txdbpkg="character",
-                       singleEnd="logical",
-                       strandMode="integer",
-                       stdChrom="logical",
-                       readLength="integer",
-                       yieldSize="integer",
-                       diagnostics="data.frame",
-                       igcfrglen="list",
-                       intfrglen="list",
-                       scjfrglen="list",
-                       scefrglen="list",
-                       sicfrglen="list",
-                       intergenic="GRanges",
-                       intronic="GRanges",
-                       transcripts="GRangesList",
-                       tx2gene="character"))
+         representation(bfl="BamFileList",
+                        txdbpkg="character",
+                        singleEnd="logical",
+                        strandMode="integer",
+                        stdChrom="logical",
+                        readLength="integer",
+                        yieldSize="integer",
+                        diagnostics="data.frame",
+                        igcfrglen="list",
+                        intfrglen="list",
+                        scjfrglen="list",
+                        scefrglen="list",
+                        sicfrglen="list",
+                        intergenic="GRanges",
+                        intronic="GRanges",
+                        transcripts="GRangesList",
+                        tx2gene="character"))
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
