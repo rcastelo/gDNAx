@@ -12,6 +12,10 @@ filterBAMtx(
   txflag = filterBAMtxFlag(),
   param = ScanBamParam(),
   yieldSize = 1e+06,
+  wsize = 1000,
+  wstep = 100,
+  pstrness = 0.6,
+  p.value = 0.05,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -19,6 +23,7 @@ filterBAMtx(
 filterBAMtxFlag(
   isSpliceCompatibleJunction = FALSE,
   isSpliceCompatibleExonic = FALSE,
+  isInStrandedWindow = FALSE,
   isIntronic = FALSE,
   isIntergenic = FALSE
 )
@@ -39,6 +44,20 @@ yield each time the file is read. The lower the value, the smaller memory
 consumption, but in the case of large BAM files, values below 1e6 records
 may decrease the overall performance.}
 
+\item{wsize}{(Default 1000) Window size employed when the argument
+\code{txflag} includes the value \code{isInStrandedWindow=TRUE}.}
+
+\item{wstep}{(Default 100) Window step employed when the argument
+\code{txflag} includes the value \code{isInStrandedWindow=TRUE}.}
+
+\item{pstrness}{(Default 0.6) Strandedness value above which we consider
+a target read alignment to occur in stranded window.}
+
+\item{p.value}{(Default 0.05) Numeric value between 0 and 1 specifying the
+corrected p-value cutoff under which we reject the null hypothesis that a
+target read alignment occurs in a window with an strandedness value below
+the one given in the parameter \code{pstrness}.}
+
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
 
@@ -52,7 +71,7 @@ through the calculations.}
 if spliced alignments overlapping a transcript in a 
 "splice compatible" way should be included in the BAM file. For
 paired-end reads, one or both alignments must have one or more splice
-site(s) compatible with splicing. See 
+sites compatible with splicing. See 
 \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.}
 
 \item{isSpliceCompatibleExonic}{(Default FALSE) Logical value indicating
@@ -62,6 +81,13 @@ For paired-end reads, none of the alignments must be spliced, and
 each pair can be in different exons (or in the same one), as long as
 they are "splice compatible". See 
 \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.}
+
+\item{isInStrandedWindow}{(Default FALSE) Logical value
+indicating whether an alignment occurs in a stranded windows. More
+concretely, for each alignment, strandedness will be tested with
+respect to the rest of the alignments occurring in overlapping
+windows. This filter will assign a TRUE value when those tests are
+passed.}
 
 \item{isIntronic}{(Default FALSE) Logical value indicating if alignments
 mapping to introns should be included in the BAM file.}
@@ -82,8 +108,9 @@ transcriptome annotation.
 
 Use 'filterBAMtxFlag()' to set what types of alignment in a BAM 
 file should be filtered using the function 'filterBAMtx()',
-among being splice-compatible with one or more junctions,
-splice-compatible exonic, intronic or intergenic.
+among being splice-compatible with one or more exon-exon junctions,
+splice-compatible exonic, splice-compatible exonic in a window, intronic or
+intergenic.
 }
 \examples{
 library(gDNAinRNAseqData)
@@ -105,10 +132,11 @@ list.files(dir, pattern="*.bam$")
 
 
 # Filtering splice-compatible alignments and writing them into new BAM files
-fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=FALSE,
                        isSpliceCompatibleExonic=FALSE,
+                       isInStrandedWindow=FALSE,
                        isIntronic=FALSE,
-                       isIntergenic = FALSE)
+                       isIntergenic=FALSE)
 
 testBAMtxFlag(fbf, "isSpliceCompatibleJunction")
                        

@@ -16,6 +16,20 @@
 #' consumption, but in the case of large BAM files, values below 1e6 records
 #' may decrease the overall performance.
 #'
+#' @param wsize (Default 1000) Window size employed when the argument
+#' \code{txflag} includes the value \code{isInStrandedWindow=TRUE}.
+#'
+#' @param wstep (Default 100) Window step employed when the argument
+#' \code{txflag} includes the value \code{isInStrandedWindow=TRUE}.
+#'
+#' @param pstrness (Default 0.6) Strandedness value above which we consider
+#' a target read alignment to occur in stranded window.
+#'
+#' @param p.value (Default 0.05) Numeric value between 0 and 1 specifying the
+#' corrected p-value cutoff under which we reject the null hypothesis that a
+#' target read alignment occurs in a window with an strandedness value below
+#' the one given in the parameter \code{pstrness}.
+#'
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
@@ -55,8 +69,9 @@
 #' @export
 #' @rdname filterBAMtx
 filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
-                        param=ScanBamParam(), yieldSize=1000000, verbose=TRUE,
-                        BPPARAM=SerialParam(progressbar=verbose)) {
+                        param=ScanBamParam(), yieldSize=1000000,
+                        wsize=1000, wstep=100, pstrness=0.6, p.value=0.05,
+                        verbose=TRUE, BPPARAM=SerialParam(progressbar=verbose)) {
     bfl <- object@bfl
     singleEnd <- object@singleEnd
     strandMode <- object@strandMode
@@ -67,10 +82,14 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     tx2gene <- object@tx2gene
     if (!file.exists(path))
         stop(sprintf("path %s does not exist.", path))
-    if (txflag == 0) {
+    if (txflag == 0)
         stop("No alignment type selected in argument 'txflag'. Please use ",
-            "the function 'filterBAMtxFlag()' to select at least one.")
-    }
+             "the function 'filterBAMtxFlag()' to select at least one.")
+    if (testBAMtxFlag(txflag, "isInStrandedWindow") && is.na(strandMode))
+      warning(" Filtering with 'isInStrandedWindow=TRUE' is only helpful\n   ",
+              "with stranded RNA-seq data and the input data is apparently\n   ",
+              "unstranded (strandMode='NA').")
+
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- lapply(bfl, function(x, ys) {
                             yieldSize(x) <- ys
@@ -94,13 +113,15 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         out.st <- bplapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
                            path=path, txflag=txflag, singleEnd=singleEnd,
                            strandMode=strandMode, stdChrom=stdChrom,
-                           tx2gene=tx2gene, param=param, verbose=verbose,
-                           BPPARAM=BPPARAM)
+                           tx2gene=tx2gene, param=param, wsize=wsize,
+                           wstep=wstep, pstrness=pstrness, p.value=p.value,
+                           verbose=verbose, BPPARAM=BPPARAM)
     } else
       out.st <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int,tx=tx,path=path,
-                       txflag=txflag, singleEnd=singleEnd, strandMode=strandMode,
-                       stdChrom=stdChrom, tx2gene=tx2gene, param=param,
-                       verbose=verbose)
+                       txflag=txflag, singleEnd=singleEnd,
+                       strandMode=strandMode, stdChrom=stdChrom,
+                       tx2gene=tx2gene, param=param, wsize=wsize, wstep=wstep,
+                       pstrness=pstrness, p.value=p.value, verbose=verbose)
 
     out.st <- data.frame(do.call("rbind", out.st))
     out.st
@@ -110,12 +131,14 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom S4Vectors FilterRules
 #' @importFrom Rsamtools filterBam sortBam indexBam
 .filter_oneBAMtx <- function(bf, igc, int, tx, path, txflag, singleEnd,
-                            strandMode, stdChrom, tx2gene, param, verbose) {
+                             strandMode, stdChrom, tx2gene, param, wsize, wstep,
+                             pstrness, p.value, verbose) {
 
     onesuffix <- c(isIntergenic="IGC",
                    isIntronic="INT",
                    isSpliceCompatibleJunction="SCJ",
-                   isSpliceCompatibleExonic="SCE")
+                   isSpliceCompatibleExonic="SCE",
+                   isInStrandedWindow="STW")
     suffix <- "_"
     for (flag in TXFLAG_BITNAMES)
         if (testBAMtxFlag(txflag, flag))
@@ -127,13 +150,12 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         paste0(gsub(".bam", "", basename(path(bf))), suffix))
     statsenvname <- sprintf("stats_%s", gsub(".bam", "", basename(path(bf))))
     assign(statsenvname, new.env())
-    assign("stats", c(NALN=0L, NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L),
-            envir=get(statsenvname))
+    assign("stats", c(NALN=0L, NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L),
+           envir=get(statsenvname))
 
     if (verbose)
         message(sprintf("Processing %s", basename(path(bf))))
     filter <- FilterRules(list(BAMtx=.bamtx_filter))
-    ## ff <- filterBam(bf, tempfile(), param=param, filter=filter,
     ff <- filterBam(bf, bamoutfile, param=param, filter=filter,
                     indexDestination=FALSE)
     if (!singleEnd) {
@@ -156,7 +178,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 }
 
 #' @importFrom Rsamtools bamWhat bamTag
-#' @importFrom S4Vectors DataFrame mcols<-
+#' @importFrom S4Vectors DataFrame mcols mcols<-
 #' @importFrom GenomeInfoDb seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
@@ -175,31 +197,44 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     tx <- get("tx", envir=parent.frame(n))
     tx2gene <- get("tx2gene", envir=parent.frame(n))
     verbose <- get("verbose", envir=parent.frame(n))
+    wsize <- get("wsize", envir=parent.frame(n))
+    wstep <- get("wstep", envir=parent.frame(n))
+    pstrness <- get("pstrness", envir=parent.frame(n))
+    p.value <- get("p.value", envir=parent.frame(n))
     statsenvname <- get("statsenvname", envir=parent.frame(n))
     statsenv <- get(statsenvname, envir=parent.frame(n))
     seqlengths <- .getSeqlen(bf, x)
     gal <- GAlignments(seqnames=x$rname, pos=x$pos, cigar=x$cigar,
-                        strand=x$strand, seqlengths=seqlengths)
+                       strand=x$strand, seqlengths=seqlengths)
     stopifnot(nrow(x) == length(gal)) ## QC
     cnames <- setdiff(c(bamWhat(param), bamTag(param)),
                         c("rname", "pos", "cigar", "strand"))
+    dtf <- DataFrame(idx=1:nrow(x))
     if (length(cnames) > 0) {
-        dtf <- do.call(DataFrame, as.list(x[cnames]))
-        colnames(dtf) <- cnames
-        mcols(gal) <- dtf
+        dtf2 <- do.call(DataFrame, as.list(x[cnames]))
+        colnames(dtf2) <- cnames
+        dtf <- cbind(dtf2, dtf)
     }
-    gal <- .makeGALPE(singleEnd, param, strandMode, gal)
-    if (stdChrom)
+    mcols(gal) <- dtf
+    if (!singleEnd)
+        gal <- .makeGALPE(param, strandMode, gal)
+    if (stdChrom) {
+        ngal <- length(gal)
         if (singleEnd)
             gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
         else
             gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+        if (length(gal) < ngal && verbose)
+          message(sprintf("Discarding %d alignments in non-standard chromosomes.",
+                          ngal-length(gal)))
+        if (length(gal) == 0) ## if all alignments are in non-standard chromosomes
+          return(rep(FALSE, nrow(x)))
+    }
     
     gal <- .matchSeqinfo(gal, tx, verbose)
     
-    alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx,
-                           tx2gene, singleEnd)
-    mask <- alntype$mask
+    alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx, tx2gene,
+                           singleEnd, wsize, wstep, pstrness, p.value)
     envstats <- get("stats", envir=statsenv)
     envstats <- envstats + alntype$stats
     assign("stats", envstats, envir=statsenv)
@@ -210,11 +245,16 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         100*sum(envstats[-1])/envstats["NALN"], messwhalnstr))
     }
     
-    if (singleEnd)
-        mt <- match(x$qname, mcols(gal)$qname)
-    else
-        mt <- match(x$qname, mcols(first(gal))$qname)
-    mask <- mask[mt]
+    mask <- rep(FALSE, nrow(x))
+    if (any(alntype$mask)) {
+        keep <- integer(0)
+        if (singleEnd)
+            keep <- mcols(gal)$idx[alntype$mask]
+        else
+            keep <- c(mcols(first(gal))$idx[alntype$mask],
+                      mcols(last(gal))$idx[alntype$mask])
+        mask[keep] <- TRUE
+    }
     mask
 }
 
@@ -239,34 +279,38 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 ## private function .makeGALPE()
 #' @importFrom Rsamtools bamWhat bamTag
-.makeGALPE <- function(singleEnd, param, strandMode, gal) {
-    if (!singleEnd) {
-        use.mcols <- setdiff(c(bamWhat(param), bamTag(param)),
-                             c("rname", "pos", "cigar", "strand"))
-        strandMode2 <- strandMode
-        if (is.na(strandMode))
-            strandMode2 <- 1L
-        makeGALP <- GenomicAlignments:::.make_GAlignmentPairs_from_GAlignments
-        gal <- makeGALP(gal, strandMode2, use.mcols=use.mcols)
-    }
+#' @importFrom S4Vectors mcols
+.makeGALPE <- function(param, strandMode, gal) {
+    use.mcols <- setdiff(c(bamWhat(param), bamTag(param), colnames(mcols(gal))),
+                         c("rname", "pos", "cigar", "strand", "qname", "flag",
+                           "groupid", "mate_status"))
+    strandMode2 <- strandMode
+    if (is.na(strandMode))
+        strandMode2 <- 1L
+    makeGALP <- GenomicAlignments:::.make_GAlignmentPairs_from_GAlignments
+    suppressWarnings(gal <- makeGALP(gal, strandMode2, use.mcols=use.mcols))
     return(gal)
 }
 
 ## private function .getalntype()
-.getalntype <- function(gal, txflag, igc, int, strandMode, tx,
-                        tx2gene, singleEnd) {
-    mask <- rep(FALSE, length(gal))
+.getalntype <- function(gal, txflag, igc, int, strandMode, tx, tx2gene,
+                        singleEnd, wsize, wstep, pstrness, p.value) {
+
     whalnstr <- character(0)
-    stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L)
+    stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L)
+    if (length(gal) == 0)
+      return(list(mask=logical(0), whalnstr=whalnstr, stats=stats))
+
+    tmask <- imask <- rep(FALSE, length(gal))
     if (testBAMtxFlag(txflag, "isIntergenic")) {
         igcaln <- .igcAlignments(gal, igc, fragmentsLen=FALSE)
-        mask <- mask | igcaln$igcmask
+        tmask <- tmask | igcaln$igcmask
         whalnstr <- c(whalnstr, "IGC")
         stats["NIGC"] <- sum(igcaln$igcmask)
     }
     if (testBAMtxFlag(txflag, "isIntronic")) {
         intaln <- .intAlignments(gal, int, strandMode, fragmentsLen=FALSE)
-        mask <- mask | intaln$intmask
+        tmask <- tmask | intaln$intmask
         whalnstr <- c(whalnstr, "INT")
         stats["NINT"] <- sum(intaln$intmask)
     }
@@ -275,24 +319,33 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         scoaln <- .scoAlignments(gal, tx, tx2gene, singleEnd, strandMode,
                                  fragmentsLen=FALSE)
         if (testBAMtxFlag(txflag, "isSpliceCompatibleJunction")) {
-            mask <- mask | scoaln$scjmask
+            imask <- scoaln$scjmask
+            tmask <- tmask | scoaln$scjmask
             whalnstr <- c(whalnstr, "SCJ")
             stats["NSCJ"] <- sum(scoaln$scjmask)
         }
         if (testBAMtxFlag(txflag, "isSpliceCompatibleExonic")) {
-            mask <- mask | scoaln$scemask
+            tmask <- tmask | scoaln$scemask
             whalnstr <- c(whalnstr, "SCE")
             stats["NSCE"] <- sum(scoaln$scemask)
         }
     }
-    return(list(mask=mask, whalnstr=whalnstr, stats=stats))
+    if (testBAMtxFlag(txflag, "isInStrandedWindow")) {
+        stwmask <- .strandedWindowMask(gal, tx, singleEnd, wsize, wstep,
+                                       pstrness, p.value, tmask, imask)
+        tmask <- tmask & stwmask
+        whalnstr <- c(whalnstr, "STW")
+        stats["NSTW"] <- sum(stwmask) 
+    }
+    return(list(mask=tmask, whalnstr=whalnstr, stats=stats))
 }
 
 
 TXFLAG_BITNAMES <- c("isIntergenic",
-                    "isIntronic",
-                    "isSpliceCompatibleJunction",
-                    "isSpliceCompatibleExonic")
+                     "isIntronic",
+                     "isSpliceCompatibleJunction",
+                     "isSpliceCompatibleExonic",
+                     "isInStrandedWindow")
 
 ## adapted from Rsamtools::scanBamFlag()
 
@@ -300,14 +353,15 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'
 #' Use 'filterBAMtxFlag()' to set what types of alignment in a BAM 
 #' file should be filtered using the function 'filterBAMtx()',
-#' among being splice-compatible with one or more junctions,
-#' splice-compatible exonic, intronic or intergenic.
+#' among being splice-compatible with one or more exon-exon junctions,
+#' splice-compatible exonic, splice-compatible exonic in a window, intronic or
+#' intergenic.
 #' 
 #' @param isSpliceCompatibleJunction (Default FALSE) Logical value indicating
 #'        if spliced alignments overlapping a transcript in a 
 #'        "splice compatible" way should be included in the BAM file. For
 #'        paired-end reads, one or both alignments must have one or more splice
-#'        site(s) compatible with splicing. See 
+#'        sites compatible with splicing. See 
 #'        \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.
 #' 
 #' @param isSpliceCompatibleExonic (Default FALSE) Logical value indicating
@@ -318,6 +372,13 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'        they are "splice compatible". See 
 #'        \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.
 #'        
+#' @param isInStrandedWindow (Default FALSE) Logical value
+#'        indicating whether an alignment occurs in a stranded windows. More
+#'        concretely, for each alignment, strandedness will be tested with
+#'        respect to the rest of the alignments occurring in overlapping
+#'        windows. This filter will assign a TRUE value when those tests are
+#'        passed.
+#'
 #' @param isIntronic (Default FALSE) Logical value indicating if alignments
 #'        mapping to introns should be included in the BAM file.
 #'
@@ -327,15 +388,17 @@ TXFLAG_BITNAMES <- c("isIntergenic",
 #'
 #' @examples
 #' # Filtering splice-compatible alignments and writing them into new BAM files
-#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+#' fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=FALSE,
 #'                        isSpliceCompatibleExonic=FALSE,
+#'                        isInStrandedWindow=FALSE,
 #'                        isIntronic=FALSE,
-#'                        isIntergenic = FALSE)
+#'                        isIntergenic=FALSE)
 #' 
 #' @export
 #' @rdname filterBAMtx
 filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
                             isSpliceCompatibleExonic=FALSE,
+                            isInStrandedWindow=FALSE,
                             isIntronic=FALSE,
                             isIntergenic=FALSE) {
     flag <- S4Vectors:::makePowersOfTwo(length(TXFLAG_BITNAMES))
@@ -347,8 +410,8 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
     if (length(args) == 0)
         args <- formals(filterBAMtxFlag)
 
-    idx <- names(args[vapply(args, function(x) !is.na(x) && x, 
-                                FUN.VALUE = logical(1L))])
+    idx <- names(args[vapply(args, function(x) !is.na(x) && x,
+                             FUN.VALUE = logical(1L))])
     keep <- Reduce("+", flag[names(flag) %in% idx], 0L)
 
     keep
@@ -372,6 +435,186 @@ testBAMtxFlag <- function(flag, value) {
                         paste(TXFLAG_BITNAMES, collapse="' '"))
         stop(msg)
     }
-    i <- 2 ^ (match(value, TXFLAG_BITNAMES) - 1L)
+    i <- 2^(match(value, TXFLAG_BITNAMES) - 1L)
     bitAnd(flag, i) == i
+}
+
+## private function .strandedWindowMask() to identify alignments that are
+## stranded using a windowing approach
+#' @importFrom stats p.adjust pbinom
+#' @importFrom S4Vectors split decode pc
+#' @importFrom IRanges coverage resize width slidingWindows Views viewSums
+#' @importFrom IRanges RleList IntegerList relist lapply
+#' @importFrom GenomicRanges GRanges GRangesList grglist granges ranges trim
+#' @importFrom GenomicRanges start start<- end end<- match
+#' @importFrom GenomicAlignments first last
+#' @importFrom matrixStats rowMins
+
+.strandedWindowMask <- function(gal, tx, singleEnd, wsize, wstep,
+                                pstrness, p.value, tmask, imask) {
+
+    if (length(gal) == 0)
+      return(logical(0))
+
+    ## generate coverage separately for the forward and reverse strands
+    grlfwd <- grlrev <- GRangesList()
+    if (!singleEnd) {
+        ## separately for each mate in the case of paired-end read alignments
+        gal1 <- first(gal, real.strand=TRUE)
+        gal2 <- last(gal, real.strand=TRUE)
+        grl1fwd <- grglist(gal1[strand(gal1) == "+"])
+        grl1rev <- grglist(gal1[strand(gal1) == "-"])
+        grl2fwd <- grglist(gal2[strand(gal2) == "+"])
+        grl2rev <- grglist(gal2[strand(gal2) == "-"])
+        grlfwd <- sort(c(unlist(grl1fwd), unlist(grl2fwd)))
+        grlrev <- sort(c(unlist(grl1rev), unlist(grl2rev)))
+    } else {
+        grlfwd <- grglist(gal[strand(gal) == "+"])
+        grlrev <- grglist(gal[strand(gal) == "-"])
+    }
+
+    covfwd <- coverage(grlfwd)
+    covrev <- coverage(grlrev)
+
+    ## fetch genomic ranges for reads where we are going to test for
+    ## strandedness, restricting calculations to those that may have
+    ## been already previously selected through the input parameter 'tmask'.
+    ## if no alignment is selected in 'tmask', then do calculations in all
+    ## of the alignments. alignments 'imask' are selected to be included
+    ## anyway, these can be also excluded from the calculations
+    galtarget <- gal
+    tmask <- tmask & !imask
+    if (sum(tmask) > 0)
+      galtarget <- gal[tmask]
+
+    gr <- GRanges()
+    if (!singleEnd) {
+      gr1 <- granges(first(galtarget, real.strand=TRUE))
+      gr2 <- granges(last(galtarget, real.strand=TRUE))
+      stopifnot(identical(strand(gr1), strand(gr2))) ## QC
+      gr <- sort(c(gr1, gr2))
+    } else
+      gr <- granges(galtarget)
+
+    ## fetch unique genomic ranges
+    uniqgr <- unique(gr)
+
+    ## create windows anchored at the ends of each read alignment in 'galtarget'
+    suppressWarnings(uniqgrwin <- resize(uniqgr, width(uniqgr)+wsize*2,
+                                         fix="center"))
+    ## set proper bounds if necessary
+    whoutofbounds <- which(trim(uniqgrwin) != uniqgrwin)
+    if (length(whoutofbounds) > 0) {
+        ## this will result in a smaller initial window range, leading to fewer
+        ## sliding windows per read alignment target, i.e., not all read alignment
+        ## targets will have the same number of sliding windows ('nwin' below)
+        
+        mask <- start(uniqgrwin) < 1
+        suppressWarnings(start(uniqgrwin[mask]) <- 1)
+        sl <- seqlengths(uniqgrwin)[decode(seqnames(uniqgrwin))]
+        mask <- end(uniqgrwin) > sl
+        suppressWarnings(end(uniqgrwin[mask]) <- sl[mask])
+    }
+
+    slw <- slidingWindows(uniqgrwin, width=wsize, step=wstep)
+    nwin <- unique(lengths(slw))
+    if (length(nwin) > 1) {
+        ## if there are different number of windows per read alignment target,
+        ## pad those collections of windows with 0-width windows to enforce all
+        ## having the maximum possible number of windows
+        nwin <- lengths(slw)
+        maxnwin <- max(nwin)
+        slw2 <- slw[nwin < maxnwin]
+        n2pad <- maxnwin - lengths(slw2)
+        seqs2pad <- unlist(seqnames(slw2), use.names=FALSE)[cumsum(lengths(slw2))]
+        strands2pad <- unlist(strand(slw2), use.names=FALSE)[cumsum(lengths(slw2))]
+        gr2pad <- GRanges(rep(seqs2pad, times=n2pad), IRanges(1, 0),
+                          strand=rep(strands2pad, times=n2pad))
+        gr2pad <- split(gr2pad, rep(1:length(slw2), times=n2pad))
+        slw2 <- pc(gr2pad, slw2)
+        slw[nwin < maxnwin] <- slw2
+        rm(slw2)
+        nwin <- unique(lengths(slw))
+    }
+    stopifnot(length(nwin) == 1) ## QC
+
+    ## sum forward and reverse coverage over windows
+    viewsfwd <- Views(covfwd, unlist(slw))
+    cntfwd <- viewSums(viewsfwd)
+    viewsrev <- Views(covrev, unlist(slw))
+    cntrev <- viewSums(viewsrev)
+
+    ## scale counts to library size to avoid counting reads more than once
+    scntfwd <- cntfwd
+    scntrev <- cntrev
+    zeromask <- all(cntfwd == 0L)
+    scntfwd[!zeromask] <- ceiling(length(gal) *
+                                  (cntfwd[!zeromask] / sum(covfwd[!zeromask])))
+    zeromask <- all(cntrev == 0L)
+    scntrev[!zeromask] <- ceiling(length(gal) *
+                                  (cntrev[!zeromask] / sum(covrev[!zeromask])))
+    scnttot <- scntfwd + scntrev
+
+    ## set alignments counts according to their strand: if strand is '+' take
+    ## the counts on the '+' strand, if strand is '-', take the counts on the
+    ## '-' strand, and if strand is '*' take the maximum value between the
+    ## counts in the positive and negative strands
+    strbyseq <- split(rep(strand(uniqgr), each=nwin),
+                      rep(seqnames(uniqgr), each=nwin))
+    scnt <- scntfwd
+    strmask <- strbyseq == "-"
+    ## if (any(strmask))
+    ##   scnt[strmask] <- scntrev[strmask]
+    scnt[strmask] <- scntrev[strmask]
+    strmask <- strbyseq == "*"
+    ## if (any(strmask))
+    ##   scnt[strmask] <- pmax(scntfwd[strmask], scntrev[strmask])
+    scnt[strmask] <- IntegerList(mapply(pmax, scntfwd[strmask],
+                                        scntrev[strmask]))
+
+    ## for each window, calculate the p-value of a one-sided exact binomial test
+    ## with a given hypothesized strandedness proportion above which we consider
+    ## a target read alignment to occur in a stranded window
+    p <- pbinom(unlist(scnt, use.names=FALSE), unlist(scnttot, use.names=FALSE),
+                p=pstrness, lower.tail=FALSE)
+    p <- relist(p, scnt)
+
+    ## re-arrange window p-values by unique target read alignment, select the
+    ## smallest p-value among the windows of each unique target read alignment,
+    ## and adjust them using the Bonferroni method
+    p <- lapply(p, matrix, ncol=nwin, byrow=TRUE)
+    p <- lapply(p, rowMins)
+    p <- lapply(p, p.adjust, method="bonferroni")
+
+    uniqgr$p <- unlist(p, use.names=FALSE)
+
+    ## match back p-values to the target read alignments. in the case of
+    ## paired-end read alignments, select the smallest p-value between the two
+    ## mates
+    if (!singleEnd) {
+      gr1 <- granges(first(galtarget, real.strand=TRUE))
+      gr2 <- granges(last(galtarget, real.strand=TRUE))
+      mt1 <- match(gr1, uniqgr)
+      stopifnot(all(!is.na(mt1))) ## QC
+      mt2 <- match(gr2, uniqgr)
+      stopifnot(all(!is.na(mt2))) ## QC
+      p1 <- uniqgr$p[mt1]
+      p2 <- uniqgr$p[mt2]
+      p <- pmin(p1, p2)
+    } else {
+      gr <- granges(galtarget)
+      mt <- match(gr, uniqgr)
+      p <- uniqgr$p[mt]
+    }
+
+    ## build the final logical mask that selects target read alignments with a
+    ## p-value below a given threshold
+    mask <- p < p.value
+    if (sum(tmask) > 0) {
+      mask <- rep(FALSE, length(gal))
+      mask[tmask] <- p < p.value
+    }
+    mask <- mask | imask
+
+    return(mask)
 }

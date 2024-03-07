@@ -121,10 +121,10 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         exbytx <- exbytx[lengths(exbytx) > 0]
     }
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
-                            isProperPair=!singleEnd,
-                            isSecondaryAlignment=FALSE,
-                            isDuplicate=FALSE,
-                            isNotPassingQualityControls=FALSE)
+                           isProperPair=!singleEnd,
+                           isSecondaryAlignment=FALSE,
+                           isDuplicate=FALSE,
+                           isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
     
     if (verbose)
@@ -147,7 +147,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     .checkMinNaln(strbysm) # warning if n. align < 1e+05
     sm <- .decideStrandMode(strbysm)
     
-    strbysmtype <- list("strandMode" = sm, "Strandedness" = strbysm)
+    strbysmtype <- list("strandMode"=sm, "Strandedness"=strbysm)
     strbysmtype
 }
 
