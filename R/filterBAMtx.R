@@ -178,7 +178,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 }
 
 #' @importFrom Rsamtools bamWhat bamTag
-#' @importFrom S4Vectors DataFrame mcols<-
+#' @importFrom S4Vectors DataFrame mcols mcols<-
 #' @importFrom GenomeInfoDb seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
@@ -205,27 +205,36 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     statsenv <- get(statsenvname, envir=parent.frame(n))
     seqlengths <- .getSeqlen(bf, x)
     gal <- GAlignments(seqnames=x$rname, pos=x$pos, cigar=x$cigar,
-                        strand=x$strand, seqlengths=seqlengths)
+                       strand=x$strand, seqlengths=seqlengths)
     stopifnot(nrow(x) == length(gal)) ## QC
     cnames <- setdiff(c(bamWhat(param), bamTag(param)),
                         c("rname", "pos", "cigar", "strand"))
+    dtf <- DataFrame(idx=1:nrow(x))
     if (length(cnames) > 0) {
-        dtf <- do.call(DataFrame, as.list(x[cnames]))
-        colnames(dtf) <- cnames
-        mcols(gal) <- dtf
+        dtf2 <- do.call(DataFrame, as.list(x[cnames]))
+        colnames(dtf2) <- cnames
+        dtf <- cbind(dtf2, dtf)
     }
-    gal <- .makeGALPE(singleEnd, param, strandMode, gal)
-    if (stdChrom)
+    mcols(gal) <- dtf
+    if (!singleEnd)
+        gal <- .makeGALPE(param, strandMode, gal)
+    if (stdChrom) {
+        ngal <- length(gal)
         if (singleEnd)
             gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
         else
             gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+        if (length(gal) < ngal && verbose)
+          message(sprintf("Discarding %d alignments in non-standard chromosomes.",
+                          ngal-length(gal)))
+        if (length(gal) == 0) ## if all alignments are in non-standard chromosomes
+          return(rep(FALSE, nrow(x)))
+    }
     
     gal <- .matchSeqinfo(gal, tx, verbose)
     
     alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx, tx2gene,
                            singleEnd, wsize, wstep, pstrness, p.value)
-    mask <- alntype$mask
     envstats <- get("stats", envir=statsenv)
     envstats <- envstats + alntype$stats
     assign("stats", envstats, envir=statsenv)
@@ -236,11 +245,16 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         100*sum(envstats[-1])/envstats["NALN"], messwhalnstr))
     }
     
-    if (singleEnd)
-        mt <- match(x$qname, mcols(gal)$qname)
-    else
-        mt <- match(x$qname, mcols(first(gal))$qname)
-    mask <- mask[mt]
+    mask <- rep(FALSE, nrow(x))
+    if (any(alntype$mask)) {
+        keep <- integer(0)
+        if (singleEnd)
+            keep <- mcols(gal)$idx[alntype$mask]
+        else
+            keep <- c(mcols(first(gal))$idx[alntype$mask],
+                      mcols(last(gal))$idx[alntype$mask])
+        mask[keep] <- TRUE
+    }
     mask
 }
 
@@ -265,25 +279,29 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 ## private function .makeGALPE()
 #' @importFrom Rsamtools bamWhat bamTag
-.makeGALPE <- function(singleEnd, param, strandMode, gal) {
-    if (!singleEnd) {
-        use.mcols <- setdiff(c(bamWhat(param), bamTag(param)),
-                             c("rname", "pos", "cigar", "strand"))
-        strandMode2 <- strandMode
-        if (is.na(strandMode))
-            strandMode2 <- 1L
-        makeGALP <- GenomicAlignments:::.make_GAlignmentPairs_from_GAlignments
-        suppressWarnings(gal <- makeGALP(gal, strandMode2, use.mcols=use.mcols))
-    }
+#' @importFrom S4Vectors mcols
+.makeGALPE <- function(param, strandMode, gal) {
+    use.mcols <- setdiff(c(bamWhat(param), bamTag(param), colnames(mcols(gal))),
+                         c("rname", "pos", "cigar", "strand", "qname", "flag",
+                           "groupid", "mate_status"))
+    strandMode2 <- strandMode
+    if (is.na(strandMode))
+        strandMode2 <- 1L
+    makeGALP <- GenomicAlignments:::.make_GAlignmentPairs_from_GAlignments
+    suppressWarnings(gal <- makeGALP(gal, strandMode2, use.mcols=use.mcols))
     return(gal)
 }
 
 ## private function .getalntype()
 .getalntype <- function(gal, txflag, igc, int, strandMode, tx, tx2gene,
                         singleEnd, wsize, wstep, pstrness, p.value) {
-    tmask <- imask <- rep(FALSE, length(gal))
+
     whalnstr <- character(0)
     stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L)
+    if (length(gal) == 0)
+      return(list(mask=logical(0), whalnstr=whalnstr, stats=stats))
+
+    tmask <- imask <- rep(FALSE, length(gal))
     if (testBAMtxFlag(txflag, "isIntergenic")) {
         igcaln <- .igcAlignments(gal, igc, fragmentsLen=FALSE)
         tmask <- tmask | igcaln$igcmask
@@ -435,6 +453,9 @@ testBAMtxFlag <- function(flag, value) {
 .strandedWindowMask <- function(gal, tx, singleEnd, wsize, wstep,
                                 pstrness, p.value, tmask, imask) {
 
+    if (length(gal) == 0)
+      return(logical(0))
+
     ## generate coverage separately for the forward and reverse strands
     grlfwd <- grlrev <- GRangesList()
     if (!singleEnd) {
@@ -507,7 +528,8 @@ testBAMtxFlag <- function(flag, value) {
         n2pad <- maxnwin - lengths(slw2)
         seqs2pad <- unlist(seqnames(slw2), use.names=FALSE)[cumsum(lengths(slw2))]
         strands2pad <- unlist(strand(slw2), use.names=FALSE)[cumsum(lengths(slw2))]
-        gr2pad <- GRanges(rep(seqs2pad, n2pad), IRanges(1, 0), rep(strands2pad, n2pad))
+        gr2pad <- GRanges(rep(seqs2pad, times=n2pad), IRanges(1, 0),
+                          strand=rep(strands2pad, times=n2pad))
         gr2pad <- split(gr2pad, rep(1:length(slw2), times=n2pad))
         slw2 <- pc(gr2pad, slw2)
         slw[nwin < maxnwin] <- slw2
