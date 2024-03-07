@@ -162,8 +162,15 @@
                            isSecondaryAlignment=FALSE,
                            isNotPassingQualityControls=FALSE)
         w <- scanBam(bf, param=ScanBamParam(flag=sbf, what="qwidth"))[[1]]$qwidth
-        tab <- table(w)
-        w <- as.integer(names(tab[which.max(tab)]))
+        if (length(w) > 0) {
+          tab <- table(w)
+          w <- as.integer(names(tab[which.max(tab)]))
+        } else {
+          w <- 0
+          warning(sprintf(paste("Could not figure out read length from",
+                                "BAM file %s. Possibly something wrong with it",
+                                sep="\n"), basename(bf)))
+        }
         w
     }
     rlen <- unname(vapply(bfl, qw, singleEnd=singleEnd, FUN.VALUE=integer(1L)))

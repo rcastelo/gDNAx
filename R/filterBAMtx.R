@@ -424,10 +424,9 @@ testBAMtxFlag <- function(flag, value) {
 ## private function .strandedWindowMask() to identify alignments that are
 ## stranded using a windowing approach
 #' @importFrom stats p.adjust pbinom
-#' @importFrom utils relist
 #' @importFrom S4Vectors split decode pc
 #' @importFrom IRanges coverage resize width slidingWindows Views viewSums
-#' @importFrom IRanges RleList IntegerList
+#' @importFrom IRanges RleList IntegerList relist lapply
 #' @importFrom GenomicRanges GRanges GRangesList grglist granges ranges trim
 #' @importFrom GenomicRanges start start<- end end<- match
 #' @importFrom GenomicAlignments first last
@@ -490,10 +489,10 @@ testBAMtxFlag <- function(flag, value) {
         ## targets will have the same number of sliding windows ('nwin' below)
         
         mask <- start(uniqgrwin) < 1
-        start(uniqgrwin[mask]) <- 1
+        suppressWarnings(start(uniqgrwin[mask]) <- 1)
         sl <- seqlengths(uniqgrwin)[decode(seqnames(uniqgrwin))]
         mask <- end(uniqgrwin) > sl
-        end(uniqgrwin[mask]) <- sl[mask]
+        suppressWarnings(end(uniqgrwin[mask]) <- sl[mask])
     }
 
     slw <- slidingWindows(uniqgrwin, width=wsize, step=wstep)
