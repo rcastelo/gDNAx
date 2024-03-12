@@ -1,73 +1,82 @@
 ## private function .checkBamFileListArgs()
-## adapted from GenomicAlignments/R/summarizeOverlaps-methods.R
 
 #' @importFrom methods is
-#' @importFrom Rsamtools BamFileList asMates asMates<-
-.checkBamFileListArgs <- function(bfl, singleEnd, fragments, yieldSize) {
+#' @importFrom Rsamtools BamFileList
+#' @importFrom BiocGenerics path
+.checkBamFiles <- function(bfl) {
     if (missing(bfl) || length(bfl) == 0 ||
         !class(bfl) %in% c("character", "BamFileList"))
         stop("argument 'bfl' should be either a string character vector",
-                "of BAM file names or a 'BamFileList' object")
+             "of BAM file names or a 'BamFileList' object")
     
-    if (is.character(bfl)) {
-        mask <- vapply(bfl, FUN=file.exists, FUN.VALUE=logical(1))
-        if (any(!mask)) {
-            whmiss <- paste(paste("  ", bfl[!mask]), collapse="\n")
-            stop(sprintf("The following input BAM files cannot be found:\n%s",
-                         whmiss))
-        }
-        if (any(duplicated(bfl))) {
-            whdupl <- paste(paste("  ", bfl[duplicated(bfl)]), collapse="\n")
-            stop(sprintf("The following input BAM files are duplicated:\n%s",
-                         whdupl))
-        }
-        fsize <- vapply(bfl, FUN=file.size, FUN.VALUE=numeric(1))
-        mask <- fsize > 0
-        if (any(!mask)) {
-            whzero <- paste(paste("  ", bfl[!mask]), collapse="\n")
-            stop(sprintf("The following input BAM files have 0 bytes:\n%s",
-                         whzero))
-        }
+    fnames <- bfl
+    if (is(bfl, "BamFileList"))
+      fnames <- path(bfl)
+
+    mask <- vapply(fnames, FUN=file.exists, FUN.VALUE=logical(1))
+    if (any(!mask)) {
+        whmiss <- paste(paste("  ", bfl[!mask]), collapse="\n")
+        stop(sprintf("The following input BAM files cannot be found:\n%s",
+                     whmiss))
     }
+    if (any(duplicated(fnames))) {
+        whdupl <- paste(paste("  ", bfl[duplicated(bfl)]), collapse="\n")
+        stop(sprintf("The following input BAM files are duplicated:\n%s",
+                     whdupl))
+    }
+    fsize <- vapply(fnames, FUN=file.size, FUN.VALUE=numeric(1))
+    mask <- fsize > 0
+    if (any(!mask)) {
+        whzero <- paste(paste("  ", bfl[!mask]), collapse="\n")
+        stop(sprintf("The following input BAM files have 0 bytes:\n%s",
+                     whzero))
+    }
+
+    bfl
+}
     
-    if (!is(bfl, "BamFileList"))
+## private function .checkBamFileListArgs() it assumes that
+## .checkBamFiles() and .checkYieldSize() have been called before
+
+#' @importFrom Rsamtools BamFileList asMates asMates<-
+.checkBamFileListArgs <- function(bfl, singleEnd, yieldSize) {
+    if (is.character(bfl))
         bfl <- BamFileList(bfl, asMates=!singleEnd, yieldSize=yieldSize)
-    else {
-        fsize <- vapply(names(bfl), FUN=file.size, FUN.VALUE=numeric(1))
-        mask <- fsize > 0
-        if (any(!mask)) {
-            whzero <- paste(paste("  ", bfl[!mask]), collapse="\n")
-            stop(sprintf("The following input BAM files have 0 bytes:\n%s",
-                         whzero))
-        }
-    }
     
     if (singleEnd) {
         if (all(isTRUE(asMates(bfl))))
             stop("cannot specify both 'singleEnd=TRUE' and 'asMates=TRUE'")
-        if (fragments)
-            stop("when 'fragments=TRUE', 'singleEnd' should be FALSE")
     } else
         asMates(bfl) <- TRUE
     
     bfl
 }
 
-## copied from GenomicAlignments:::.normarg_strandMode_replace_value()
-#' @importFrom S4Vectors isSingleNumber
-.checkStrandMode <- function(value) {
-    if (!is.na(value)) {
-        if (!isSingleNumber(value))
-            stop("invalid strand mode (must be 0, 1, or 2)")
-        if (!is.integer(value))
-            value <- as.integer(value)
-        if (!(value %in% 0:2))
-            stop("invalid strand mode (must be 0, 1, or 2)")
-    } else {
-        value <- as.integer(value)
-    }
+## private function .checkStrandMode() it assumes that .checkBamFiles(),
+## .checkYieldsize(), .checkPairedEnd() and .checkBamFileListArgs() have
+## been called before
 
-    value
+#' @importFrom methods is
+#' @importFrom S4Vectors isSingleNumber
+.checkStrandMode <- function(bfl, txdb, singleEnd, strandMode, stdChrom,
+                             exonsBy, minnaln, verbose, BPPARAM=SerialParam()) {
+    stopifnot(is(bfl, "BamFileList")) ## QC
+    if (!missing(strandMode)) {
+        if (!is.na(strandMode)) {
+            if (!isSingleNumber(strandMode))
+                stop("invalid strand mode (must be 0, 1, or 2)")
+            if (!is.integer(strandMode))
+                strandMode <- as.integer(strandMode)
+            if (!(strandMode %in% 0:2))
+                stop("invalid strand mode (must be 0, 1, or 2)")
+        } else {
+            strandMode <- as.integer(strandMode)
+        }
+    } else
+      strandMode <- .idstrandmode(bfl, txdb, singleEnd, stdChrom, exonsBy,
+                                  minnaln, verbose, BPPARAM)
+
+    strandMode
 }
 
 ## private function .checkYieldSize()
@@ -82,14 +91,18 @@
 }
 
 ## private function .checkPairedEnd()
-## checks whether BAM files are all single end
-## or paired end, and whether that matches the
-## input argument 'singleEnd', if it is not missing
+## checks whether BAM files have a single- or paired-end layout,
+## whether they all have the same layout, and if 'singleEnd' is
+## not missing, it also checks whether its value matches the
+## layout found in the BAM files. it assumes that .checkBamFiles()
+## has been called before.
 
 #' @importFrom Rsamtools yieldSize yieldSize<- testPairedEndBam
 #' @importFrom BiocParallel bpnworkers
 #' @importFrom S4Vectors unname
-.allPairedEnd <- function(bfl, singleEnd, BPPARAM=SerialParam()) {
+.checkPairedEnd <- function(bfl, singleEnd, BPPARAM=SerialParam()) {
+    if (is.character(bfl))
+      bfl <- BamFileList(bfl)
     testpe <- function(bf) {
         yieldSize <- yieldSize(bf)
         yieldSize(bf) <- 10000 ## use a small yieldSize for speed
@@ -100,12 +113,16 @@
         suppressMessages(testPairedEndBam(bf))
     }
     peflag <- FALSE
-    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1)
-      peflag <- unlist(bplapply(bfl, testpe, BPPARAM=BPPARAM),
+    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
+      bpparsilent <- BPPARAM
+      bpprogressbar(bpparsilent) <- FALSE
+      peflag <- unlist(bplapply(bfl, testpe, BPPARAM=bpparsilent),
                        use.names=FALSE)
-    else
+    } else
       peflag <- unname(vapply(bfl, testpe, FUN.VALUE = logical(1L)))
 
+    if (!all(peflag[1] == peflag))
+      stop("Some BAM files are single-end and some are paired-end.")
     if (!missing(singleEnd)) {
       if (singleEnd && any(peflag))
           stop("Some BAM files are paired-end, but 'singleEnd=TRUE'.")
@@ -117,36 +134,12 @@
     peflag[1]
 }
 
-## private function .minFrgLen()
-## returns the read length for single-end and
-## twice the read length for paired-end
-#' @importFrom Rsamtools yieldSize yieldSize<- scanBam
+## private function readLengths()
+## figure out read length from each BAM file
+
+#' @importFrom Rsamtools yieldSize yieldSize<- scanBamFlag scanBam
 #' @importFrom S4Vectors unname
-.minFrgLen <- function(bfl, singleEnd) {
-    stopifnot(length(bfl) > 0) ## QC
-    peflag <- .allPairedEnd(bfl, singleEnd)
-    qw <- function(bf) {
-        yieldSize <- yieldSize(bf)
-        yieldSize(bf) <- 10000 ## use a small yieldSize for speed
-        on.exit(yieldSize(bf) <- yieldSize)
-        on.exit(close(bf), add=TRUE)
-        if (!isOpen(bf))
-            bf <- open(bf)
-        w <- scanBam(bf, param=ScanBamParam(what="qwidth"))[[1]]$qwidth
-        tab <- table(w)
-        w <- as.integer(names(tab[which.max(tab)]))
-        w
-    }
-    allw <- unname(vapply(bfl, qw, FUN.VALUE = integer(1L)))
-    if (length(unique(allw)) > 1)
-        warning(sprintf("BAM files have different read lengths, using the minimum (%d).", min(allw)))
-
-    if (peflag)
-        allw <- allw * 2
-
-    min(allw)
-}
-.readLengths <- function(bfl, singleEnd) {
+.readLengths <- function(bfl, singleEnd, BPPARAM=SerialParam()) {
     stopifnot(length(bfl) > 0) ## QC
     qw <- function(bf, singleEnd) { ## figure out most freq. query width in first 10K aln.
         yieldSize <- yieldSize(bf)
@@ -173,7 +166,13 @@
         }
         w
     }
-    rlen <- unname(vapply(bfl, qw, singleEnd=singleEnd, FUN.VALUE=integer(1L)))
+    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
+        bpparsilent <- BPPARAM
+        bpprogressbar(bpparsilent) <- FALSE
+        rlen <- unlist(bplapply(bfl, qw, singleEnd=singleEnd, BPPARAM=bpparsilent),
+                       use.names=FALSE)
+    } else
+        rlen <- unname(vapply(bfl, qw, singleEnd=singleEnd, FUN.VALUE=integer(1L)))
     ## sometimes shorter read lengths arise from read trimming, we identify
     ## those shorter lengths as less frequent in the whole dataset and replace
     ## them by the most frequent one, which should be the original layout
@@ -209,15 +208,12 @@
         if (!.isPkgLoaded(pkgName)) {
             if (verbose)
                 message("Loading ", pkgType, " annotation package ", pkgName)
-            # loaded <- suppressPackageStartupMessages(require(pkgName,
-            #                                             character.only=TRUE))
             loaded <- suppressPackageStartupMessages(requireNamespace(pkgName,
                                                         character.only=TRUE))
             if (!loaded)
                 stop(sprintf("package %s could not be loaded.", pkgName))
         }
         tryCatch({
-            # annotObj <- get(pkgName)
             attachNamespace(pkgName)
             annotObj <- get(pkgName)
         }, error=function(err) {
@@ -238,7 +234,7 @@
     if (!is(annotObj, pkgType))
         stop(sprintf("The object loaded with name %s is not an '%s' object.",
                     ifelse(is.character(pkgName), pkgName,
-                            gettext(callobj)[2])), pkgType)
+                           gettext(callobj)[2])), pkgType)
 
     annotObj
 }
@@ -346,4 +342,46 @@
         stop("'singleEnd' must be a logical value")
     if (!is.logical(stdChrom))
         stop("'stdChrom' must be a logical value")
+}
+
+## private function .idstrandmode()
+#' @importFrom methods is
+#' @importFrom Rsamtools scanBamFlag ScanBamParam
+#' @importFrom BiocParallel bpnworkers
+.idstrandmode <- function(bfl, txdb, singleEnd, stdChrom, exonsBy, minnaln,
+                          verbose, BPPARAM=SerialParam(progressbar=verbose)) {
+    stopifnot(is(bfl, "BamFileList")) ## QC
+
+    if (is.character(txdb))
+        txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
+                                             verbose=verbose)
+    if (verbose)
+        message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
+
+    ## fetch annotations
+    annot <- exonsBy(txdb, by=exonsBy)
+    if (stdChrom) {
+        annot <- keepStandardChromosomes(annot, pruning.mode="fine")
+        annot <- annot[lengths(annot) > 0]
+    }
+    sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
+                           isProperPair=!singleEnd,
+                           isSecondaryAlignment=FALSE,
+                           isNotPassingQualityControls=FALSE)
+    param <- ScanBamParam(flag=sbflags)
+
+    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
+        verbose <- FALSE
+        strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
+                            singleEnd=singleEnd, strandMode=1L, param=param,
+                            minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
+    } else
+        strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
+                          singleEnd=singleEnd, strandMode=1L, param=param,
+                          minnaln=minnaln, verbose=verbose)
+    names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
+    strbysm <- do.call("rbind", strbysm)
+    .checkMinNaln(strbysm, minnaln)
+    sm <- .classifyStrandMode(strbysm)
+    sm
 }

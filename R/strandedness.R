@@ -18,12 +18,19 @@
 #'
 #' @param stdChrom (Default TRUE) Logical value indicating whether only
 #' alignments in the 'standard chromosomes' should be used. Consult the help
-#' page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-#' from the package \code{GenomeInfoDb} for further
-#' information.
+#' page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}()}
+#' from the package \code{GenomeInfoDb} for further information.
 #'
-#' @param yieldSize (Default 5e5) Number of records to read from each input
-#' BAM file.
+#' @param exonsBy (Default 'gene') Character string, either \code{gene} or
+#' \code{tx}, respectively specifying whether exon annotations should be
+#' grouped by gene or by transcript, in the estimation of strandedness values.
+#' Consult the help page of the function \code{\link[GenomicFeatures]{exonsBy}()}
+#' from the package \code{GenomicFeatures} for further information.
+#'
+#' @param minnaln (Default 200000) Minimum number of read alignments overlapping
+#' exonic regions considered necessary for a reliable estimation of strandedness
+#' values. A warning message is given if the number of such available alignments
+#' is smaller than the one given through this parameter.
 #'
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
@@ -89,7 +96,6 @@
 #' strandM$strandMode
 #' head(strandM$Strandedness)
 #'
-#'
 #' @importFrom BiocGenerics basename path
 #' @importFrom S4Vectors mcols mcols<-
 #' @importFrom Rsamtools scanBamFlag ScanBamParam
@@ -101,24 +107,26 @@
 #' @rdname strandedness
 
 identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
-                               yieldSize=1000000L, verbose=TRUE,
+                               exonsBy=c("gene", "tx"), minnaln=200000,
+                               verbose=TRUE,
                                BPPARAM=SerialParam(progressbar=verbose)) {
+    exonsBy <- match.arg(exonsBy)
     
-    yieldSize <- .checkYieldSize(yieldSize)
-    bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
+    ## yieldSize here is set to avoid error, but internally 200K is used
+    bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize=10000L)
     .checkOtherArgs(singleEnd, stdChrom)
     
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
-                                            verbose=verbose)
+                                             verbose=verbose)
     if (verbose)
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
     
-    ## fetch transcript annotations
-    exbytx <- exonsBy(txdb, by="tx")
+    ## fetch annotations
+    annot <- exonsBy(txdb, by=exonsBy)
     if (stdChrom) {
-        exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
-        exbytx <- exbytx[lengths(exbytx) > 0]
+        annot <- keepStandardChromosomes(annot, pruning.mode="fine")
+        annot <- annot[lengths(annot) > 0]
     }
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
                            isProperPair=!singleEnd,
@@ -128,23 +136,23 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     param <- ScanBamParam(flag=sbflags)
     
     if (verbose)
-        message("Start processing BAM file(s)")
+        message("Start scanning BAM file(s)")
     
     # strandedness by strandMode
     strbysm <- NULL
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
-        strbysm <- bplapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
+        strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                             singleEnd=singleEnd, strandMode=1L, param=param,
-                            verbose=verbose, BPPARAM=BPPARAM)
+                            minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
     } else
-        strbysm <- lapply(bfl, .strness_oneBAM, tx=exbytx, stdChrom=stdChrom,
+        strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                           singleEnd=singleEnd, strandMode=1L, param=param,
-                          verbose=verbose)
+                          minnaln=minnaln, verbose=verbose)
     
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
-    .checkMinNaln(strbysm) # warning if n. align < 1e+05
+    .checkMinNaln(strbysm, minnaln)
     sm <- .decideStrandMode(strbysm)
     
     strbysmtype <- list("strandMode"=sm, "Strandedness"=strbysm)
@@ -154,28 +162,33 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 ## Private function to get strandedness from BAM file
 #
 #' @importFrom BiocGenerics basename path
-#' @importFrom Rsamtools isOpen yieldSize
+#' @importFrom Rsamtools isOpen yieldSize yieldSize<-
 #' @importFrom GenomicAlignments readGAlignments readGAlignmentPairs
 #' @importFrom GenomeInfoDb keepStandardChromosomes
 .strness_oneBAM <- function(bf, tx, stdChrom, singleEnd, strandMode=1L,
-                            param, verbose) {
+                            param, minnaln, verbose) {
     if (isOpen(bf))
         close(bf)
     
     if (verbose)
         message(sprintf("Computing strandedness from %s", basename(path(bf))))
     
+    yieldSize <- yieldSize(bf)
+    yieldSize(bf) <- minnaln+50000
+    on.exit(yieldSize(bf) <- yieldSize)
+    on.exit(close(bf), add=TRUE)
+    bf <- open(bf)
+    
     i <- 0L
     gal <- NULL
     naln <- 0L
     nalnbystr <- integer(4L)
-    open(bf)
-    while (naln < 2e+05 & i < 10) {
+    while (naln < minnaln & i < 10) {
         if (singleEnd)
             gal <- readGAlignments(bf, param=param, use.names=FALSE)
         else
             gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
-                                      use.names=FALSE)
+                                       use.names=FALSE)
         if (stdChrom)
             if (singleEnd)
                 gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
@@ -191,11 +204,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         naln <- nalnbystr["Nalignments"]
         i <- i + 1
     }
-    on.exit(close(bf))
-    
-    if (i >= 10)
-        warning(sprintf("Reading 10 million alignments from %s was not enough to get >= 2e+05 alignments overlapping a gene, this can affect the accuracy of the strandedness", basename(path(bf))))
-    
+
     ## strandedness value (according to strandMode specified)
     strness <- nalnbystr["nalnst"] / naln
     
@@ -228,10 +237,10 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     ovtx <- findOverlaps(GRanges(gal), tx, ignore.strand=FALSE)
     
     ## build a mask to select only 1 overlap per alignment (to avoid counting
-    ## twice an alignment if it maps to > transcript)
+    ## twice an alignment if it maps to more than one gene)
     ovtxaln <- ovtx[!duplicated(queryHits(ovtx))]
     
-    ## calculate overlaps between antisense alignments and transcripts
+    ## calculate overlaps between antisense alignments and genes
     ovtxis <- findOverlaps(invertStrand(GRanges(gal)), tx, ignore.strand=FALSE)
     ovtxisaln <- ovtxis[!duplicated(queryHits(ovtxis))]
     
@@ -246,29 +255,27 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
     
     ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
-    if (ambig > 0.10)
-        warning("The proportion of alignments mapping to regions with ",
-                "transcripts annotated to both strands is > 0.10, this can ",
-                "cause strandedness value to be low.")
+    if (ambig > 0.10) {
+        wstr <- paste("The proportion of alignments mapping to regions with",
+                "transcripts annotated to both strands is %.2f, this",
+                "can cause strandedness value to be low.", sep="\n")
+        warning(sprintf(wstr, ambig))
+    }
     
     if (reportAll) {
         naln <- nalnst + nalnisst + length(ambaln)
-        
-        c("nalnst" = nalnst, "nalnisst" = nalnisst, "ambig" = length(ambaln),
-          "Nalignments" = naln)
-        
+        c(nalnst=nalnst, nalnisst=nalnisst, ambig=length(ambaln),
+          Nalignments=naln)
     } else {
         ## strandedness value (according to strandMode specified) ignoring
         ## proportion of ambiguous alignments
         strness2 <- nalnst / (nalnst + nalnisst)
-        
         strness2
     }
 }
 
 ## Private function to decide strandMode based on .getStrandedness() output
 .decideStrandMode <- function(strbysm) {
-    
     sm <- rep("ambiguous", nrow(strbysm))
     sm[strbysm[,"strandMode1"] > 0.9] <- 1L
     sm[strbysm[,"strandMode2"] > 0.9] <- 2L
@@ -286,22 +293,40 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     
     sm
 }
+.classifyStrandMode <- function(strbysm, strcutoff=0.9, weakstrcutoff=0.6,
+                                warnweakstr=FALSE) {
+    sm <- rep(NA, nrow(strbysm))
+    sm[strbysm[, "strandMode1"] >= strcutoff] <- 1L
+    sm[strbysm[, "strandMode2"] >= strcutoff] <- 2L
+    weakstrmask <- (strbysm[, "strandMode1"] >= weakstrcutoff &
+                    strbysm[, "strandMode1"] < strcutoff) |
+                   (strbysm[, "strandMode2"] >= weakstrcutoff &
+                    strbysm[, "strandMode2"] < strcutoff)
+    if (any(weakstrmask) && warnweakstr) {
+      wstr <- paste("%d BAM files show strandedness values in the interval",
+                    "  [%.1f, %.1f). Please run 'identifyStrandMode()'",
+                    "  to obtain full details on these values.", sep="\n")
+      warning(sprintf(wstr, sum(weakstrmask), weakstrcutoff, strcutoff))
+    }
+    sm[strbysm[, "strandMode1"] >= weakstrcutoff] <- 1L
+    sm[strbysm[, "strandMode2"] >= weakstrcutoff] <- 2L
+    sm
+}
 
 ## Private function to issue a warning when the strandedness value is
 ## computed from a low number of alignments
-.checkMinNaln <- function(strbysm) {
+.checkMinNaln <- function(strbysm, minnaln) {
     
-    lownaln <- strbysm[,"Nalignments"] < 1e+05
+    lownaln <- strbysm[,"Nalignments"] < minnaln
     
     if (any(lownaln)) {
-        messlownaln <- paste("The following samples had less than 1e+05 ",
-                        "alignments overlapping exonic regions, decreasing ",
-                        "the accuracy of the strandedness value: %s. ")
-        whlownaln <- paste(rownames(strbysm)[lownaln], collapse = ", ")
-        warning(sprintf(messlownaln, whlownaln))
+        wstr <- paste("%d BAM files had less than %d alignments overlapping",
+                      "  exonic regions. Run and/or look at the output of",
+                      "  'identifyStrandMode()' to obtain full details on",
+                      "  these values.", sep="\n")
+        warning(sprintf(wstr, sum(lownaln), minnaln))
     }
 }
-
 
 
 #' Compute strandedness for each feature
@@ -386,7 +411,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
                             BPPARAM=SerialParam(progressbar=verbose)) {
     
     yieldSize <- .checkYieldSize(yieldSize)
-    bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
+    bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize)
     if (is.na(strandMode))
         stop("invalid strand mode (must be 0, 1, or 2)")
     
@@ -443,7 +468,7 @@ strnessByFeature <- function(bfl, features, singleEnd=TRUE, strandMode=1L,
     if (isOpen(bf))
         close(bf)
     
-    readfun <- .getReadFunction(singleEnd, fragments = FALSE)
+    readfun <- .getReadFunction(singleEnd, fragments=FALSE)
     strand_arg <- "strandMode" %in% formalArgs(readfun)
     ov <- Hits(nLnode=0, nRnode=length(features), sort.by.query=TRUE)
     ovinvs <- Hits(nLnode=0, nRnode=length(features), sort.by.query=TRUE)

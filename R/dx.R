@@ -12,16 +12,19 @@
 #' the annotations used to inform the alignment of spliced reads, by the
 #' short-read aligner software that generated the input BAM files.
 #'
-#' @param singleEnd (Default FALSE) Logical value indicating if reads are
-#' single (\code{TRUE}) or paired-end (\code{FALSE}).
+#' @param singleEnd (missing by default) Logical value indicating if reads are
+#' single (\code{TRUE}) or paired-end (\code{FALSE}). When this argument is
+#' missing (default), its value will be estimated automatically from the BAM
+#' files.
 #'
-#' @param strandMode (Default 1L) Numeric vector which can take values 0, 1,
-#' 2 or \code{NA}. The strand mode is a per-object switch on
-#' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-#' objects that controls the behavior of the strand getter. See
-#' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-#' class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
-#' is ignored. For not strand-specific libraries, use \code{NA}
+#' @param strandMode (missing by default) Integer value either 0, 1, 2 or
+#' \code{NA}, indicating how the strand of a pair of read alignments should
+#' be inferred from the strand of the first and last alignments in the pair.
+#' See the \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+#' class for further details. If \code{singleEnd = TRUE}, then \code{strandMode}
+#' is ignored. For unstranded RNA-seq libraries, use \code{NA}. When this
+#' argument is missing (default), its value will be estimated automatically from
+#' the BAM files.
 #'
 #' @param stdChrom (Default TRUE) Logical value indicating whether only
 #' alignments in the 'standard chromosomes' should be used. Consult the help
@@ -31,6 +34,18 @@
 #'
 #' @param yieldSize (Default 1e5) Number of records to read from each input BAM
 #' file to calculate the diagnostics.
+#'
+#' @param exonsBy (Default 'gene') Character string, either \code{gene} or
+#' \code{tx}, respectively specifying whether exon annotations should be
+#' grouped by gene or by transcript, in the estimation of strandedness values.
+#' Consult the help page of the function \code{\link[GenomicFeatures]{exonsBy}()}
+#' from the package \code{GenomicFeatures} for further information.
+#'
+#' @param minnaln (Default 200000) Minimum number of read alignments overlapping
+#' exonic regions considered necessary for a reliable estimation of strandedness
+#' values. A warning message is given if the number of such available alignments
+#' is smaller than the one given through this parameter. This parameter only
+#' applies if no argument is given for the \code{strandMode} parameter.
 #'
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
@@ -69,27 +84,32 @@
 #' @importFrom methods new
 #' @export
 #' @rdname gDNAdx
-gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
-                   yieldSize=100000L, verbose=TRUE,
+gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
+                   yieldSize=100000L, exonsBy=c("gene", "tx"), minnaln=200000,
+                   verbose=TRUE,
                    BPPARAM=SerialParam(progressbar=verbose)) {
+    exonsBy <- match.arg(exonsBy)
+
     yieldSize <- .checkYieldSize(yieldSize)
-    bfl <- .checkBamFileListArgs(bfl, singleEnd, fragments=FALSE, yieldSize)
-    strandMode <- .checkStrandMode(strandMode)
-    .checkOtherArgs(singleEnd, stdChrom)
+    bfl <- .checkBamFiles(bfl)
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
-    bpparsilent <- BPPARAM
-    bpprogressbar(bpparsilent) <- FALSE
-    peflag <- .allPairedEnd(bfl, singleEnd, bpparsilent)
+
+    singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
+    bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize)
+    .checkOtherArgs(singleEnd, stdChrom)
+    strandMode <- .checkStrandMode(bfl, txdb, singleEnd, strandMode, stdChrom,
+                                   exonsBy, minnaln, verbose, BPPARAM)
+    oneStrandMode <- as.integer(names(which.max(table(strandMode, useNA="always"))))
+
     rlens <- .readLengths(bfl, singleEnd)
     maxfrglen <- max(rlens)
-    if (peflag)
-      maxfrglen <- 2 * peflag
-    ## minfrglen <- .minFrgLen(bfl, singleEnd)
+    if (!singleEnd)
+      maxfrglen <- 2 * max(rlens)
     if (verbose)
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
-    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, stdChrom, strandMode)
+    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, stdChrom, oneStrandMode)
     exbytx <- exonsBy(txdb, by="tx") ## fetch transcript annotations
     if (stdChrom) {
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
@@ -115,13 +135,13 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
         dxBAMs <- bplapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                            int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                            stdChrom=stdChrom,singleEnd=singleEnd,
-                           strandMode=strandMode, param=param,
+                           strandMode=oneStrandMode, param=param,
                            verbose=verbose, BPPARAM=BPPARAM)
     } else
         dxBAMs <- lapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                          int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                          stdChrom=stdChrom, singleEnd=singleEnd,
-                         strandMode=strandMode, param=param, verbose=verbose)
+                         strandMode=oneStrandMode, param=param, verbose=verbose)
     
     dxobj <- .collectDiagn(dxBAMs, bfl, rlens, singleEnd, txdb, strandMode,
                            stdChrom, yieldSize, igcintrng, exbytx, tx2gene,
@@ -197,7 +217,7 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
 
 ## private function .getdx_oneBAM() 
 .getdx_oneBAM <- function(igcaln, intaln, scoaln, singleEnd, strandMode,
-                            gal, tx, naln) {
+                          gal, tx, naln) {
     nigcaln <- sum(igcaln$igcmask)
     nintaln <- sum(intaln$intmask)
     nscjaln <- sum(scoaln$scjmask)
@@ -390,8 +410,6 @@ gDNAdx <- function(bfl, txdb, singleEnd=TRUE, strandMode=1L, stdChrom=TRUE,
     rmskrng <- reduce(rmskdb)
 
     ## fetch ranges of projected intron coordinates, i.e. non-overlapping introns
-    # pexbygn <- sort(unlist(reduce(exbygn), use.names=FALSE))
-    # pintrons <- sort(intersect(gaps(pexbygn), exbygnrng))
     gnrmskrng <- sort(c(unlist(reduce(exbygn), use.names=FALSE), rmskrng))
     pintrons <- sort(intersect(gaps(gnrmskrng), exbygnrng))
     if (is.na(strandMode))

@@ -135,8 +135,28 @@ setMethod("show", "gDNAx",
                                           "paired-end,"),
                                    paste(rlenstr, collapse=", "))
                 cat(sprintf("# Library layout: %s\n", rlenstr))
-                if (!object@singleEnd)
-                    cat(sprintf("# Strand mode: %d\n", object@strandMode))
+                oneStrandMode <- object@strandMode
+                pstr <- smstr <- ""
+                if (length(object@strandMode) > 1) {
+                    tab <- table(object@strandMode, useNA="always")
+                    maxsm <- names(which.max(tab))
+                    nmaxsm <- tab[maxsm]
+                    if (is.na(maxsm)) ## unstranded
+                      nmaxsm <- sum(is.na(object@strandMode))
+                    pstr <- sprintf("(%d out of %d)", nmaxsm, sum(tab))
+                    if (!is.na(maxsm)) ## stranded
+                        pstr <- sprintf("(%d out of %d)",
+                                        sum(tab[!is.na(names(tab))]), sum(tab))
+                    smstr <- sprintf("(%d in mode 1, %d in mode 2)", tab["1"],
+                                     tab["2"])
+                    oneStrandMode <- as.integer(maxsm)
+                }
+                if (is.na(oneStrandMode))
+                    cat(sprintf("# Library protocol: unstranded %s\n", pstr))
+                else
+                    cat(sprintf("# Library protocol: stranded %s\n", pstr))
+                if (!is.na(oneStrandMode) && !object@singleEnd)
+                    cat(sprintf("# Strand mode: %d %s\n", oneStrandMode, smstr))
                 if (object@stdChrom)
                     cat("# Sequences: only standard chromosomes\n")
                 else

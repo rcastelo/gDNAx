@@ -10,10 +10,12 @@
 gDNAdx(
   bfl,
   txdb,
-  singleEnd = TRUE,
-  strandMode = 1L,
+  singleEnd,
+  strandMode,
   stdChrom = TRUE,
   yieldSize = 100000L,
+  exonsBy = c("gene", "tx"),
+  minnaln = 2e+05,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -34,16 +36,19 @@ is important that the version of these annotations matches the version of
 the annotations used to inform the alignment of spliced reads, by the
 short-read aligner software that generated the input BAM files.}
 
-\item{singleEnd}{(Default FALSE) Logical value indicating if reads are
-single (\code{TRUE}) or paired-end (\code{FALSE}).}
+\item{singleEnd}{(missing by default) Logical value indicating if reads are
+single (\code{TRUE}) or paired-end (\code{FALSE}). When this argument is
+missing (default), its value will be estimated automatically from the BAM
+files.}
 
-\item{strandMode}{(Default 1L) Numeric vector which can take values 0, 1,
-2 or \code{NA}. The strand mode is a per-object switch on
-\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-objects that controls the behavior of the strand getter. See
-\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
-is ignored. For not strand-specific libraries, use \code{NA}}
+\item{strandMode}{(missing by default) Integer value either 0, 1, 2 or
+\code{NA}, indicating how the strand of a pair of read alignments should
+be inferred from the strand of the first and last alignments in the pair.
+See the \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+class for further details. If \code{singleEnd = TRUE}, then \code{strandMode}
+is ignored. For unstranded RNA-seq libraries, use \code{NA}. When this
+argument is missing (default), its value will be estimated automatically from
+the BAM files.}
 
 \item{stdChrom}{(Default TRUE) Logical value indicating whether only
 alignments in the 'standard chromosomes' should be used. Consult the help
@@ -53,6 +58,18 @@ information.}
 
 \item{yieldSize}{(Default 1e5) Number of records to read from each input BAM
 file to calculate the diagnostics.}
+
+\item{exonsBy}{(Default 'gene') Character string, either \code{gene} or
+\code{tx}, respectively specifying whether exon annotations should be
+grouped by gene or by transcript, in the estimation of strandedness values.
+Consult the help page of the function \code{\link[GenomicFeatures]{exonsBy}()}
+from the package \code{GenomicFeatures} for further information.}
+
+\item{minnaln}{(Default 200000) Minimum number of read alignments overlapping
+exonic regions considered necessary for a reliable estimation of strandedness
+values. A warning message is given if the number of such available alignments
+is smaller than the one given through this parameter. This parameter only
+applies if no argument is given for the \code{strandMode} parameter.}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}

@@ -10,7 +10,8 @@ identifyStrandMode(
   txdb,
   singleEnd = TRUE,
   stdChrom = TRUE,
-  yieldSize = 1000000L,
+  exonsBy = c("gene", "tx"),
+  minnaln = 2e+05,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -42,13 +43,19 @@ single (\code{TRUE}) or paired-end (\code{FALSE}).}
 
 \item{stdChrom}{(Default TRUE) Logical value indicating whether only
 alignments in the 'standard chromosomes' should be used. Consult the help
-page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-from the package \code{GenomeInfoDb} for further
-information.}
+page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}()}
+from the package \code{GenomeInfoDb} for further information.}
 
-\item{yieldSize}{(Default 5e5) Field inherited from
-\code{\link[Rsamtools]{BamFile}}. The BAM is read by chunks.
-\code{yieldSize} represents the number of records to read for each chunk.}
+\item{exonsBy}{(Default 'gene') Character string, either \code{gene} or
+\code{tx}, respectively specifying whether exon annotations should be
+grouped by gene or by transcript, in the estimation of strandedness values.
+Consult the help page of the function \code{\link[GenomicFeatures]{exonsBy}()}
+from the package \code{GenomicFeatures} for further information.}
+
+\item{minnaln}{(Default 200000) Minimum number of read alignments overlapping
+exonic regions considered necessary for a reliable estimation of strandedness
+values. A warning message is given if the number of such available alignments
+is smaller than the one given through this parameter.}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
@@ -69,6 +76,10 @@ objects that controls the behavior of the strand getter. See
 \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 class for further detail. If \code{singleEnd = TRUE}, then \code{strandMode}
 is ignored.}
+
+\item{yieldSize}{(Default 5e5) Field inherited from
+\code{\link[Rsamtools]{BamFile}}. The BAM is read by chunks.
+\code{yieldSize} represents the number of records to read for each chunk.}
 
 \item{ambiguous}{(Default FALSE) Logical value indicating if reads that
 overlap a region with features annotated to both strands should be included
@@ -159,7 +170,6 @@ bamfiles <- bamfiles[c(1,7)] # using a subset of samples
 strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
 strandM$strandMode
 head(strandM$Strandedness)
-
 
 features <- range(exonsBy(txdb, by="gene"))
 features <- features[1:100]
