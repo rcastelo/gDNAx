@@ -11,6 +11,16 @@
 \alias{getIgc,gDNAx-method}
 \alias{getInt}
 \alias{getInt,gDNAx-method}
+\alias{singleEnd,gDNAx-method}
+\alias{singleEnd}
+\alias{strandMode,gDNAx-method}
+\alias{strandMode}
+\alias{strandMode<-,gDNAx-method}
+\alias{strandMode<-}
+\alias{allStrandModes,gDNAx-method}
+\alias{allStrandModes}
+\alias{strandedness,gDNAx-method}
+\alias{strandedness}
 \title{gDNAx class}
 \usage{
 \S4method{getDx}{gDNAx}(x)
@@ -20,6 +30,16 @@
 \S4method{getIgc}{gDNAx}(x)
 
 \S4method{getInt}{gDNAx}(x)
+
+\S4method{singleEnd}{gDNAx}(x)
+
+\S4method{strandMode}{gDNAx}(x)
+
+\S4method{strandMode}{gDNAx}(x) <- value
+
+\S4method{allStrandModes}{gDNAx}(x)
+
+\S4method{strandedness}{gDNAx}(x)
 }
 \arguments{
 \item{x}{A \linkS4class{gDNAx} object.}
@@ -45,12 +65,14 @@ This is a class for storing the results of a call to the
 \item{\code{singleEnd}}{Logical value indicating if reads are single (\code{TRUE})
 or paired-end (\code{FALSE}).}
 
-\item{\code{strandMode}}{Numeric vector which can take values 0, 1 or 2. The strand
-mode is a per-object switch on
-\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-objects that controls the behavior of the strand getter. See
+\item{\code{strandMode}}{Integer value either 0, 1, 2 or \code{NA}, indicating how
+the strand of a pair of read alignments should be inferred from the strand
+of the first and last alignments in the pair. See the
 \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 class for further detail.}
+
+\item{\code{allStrandModes}}{Vector of integer values each of them corresponding to
+a \code{strandMode} value estimated from a BAM file.}
 
 \item{\code{stdChrom}}{Logical value indicating whether only alignments in the
 'standard chromosomes' should be used. Consult the help page of the function
@@ -64,6 +86,10 @@ the function \code{\link{gDNAdx}()}.}
 
 \item{\code{diagnostics}}{A 'data.frame' object storing the diagnostics calculated
 by the function 'gDNAdx()'.}
+
+\item{\code{strandedness}}{A 'data.frame' object storing the estimated values of
+strandedness, calculated when the argument \code{strandMode} is missing in
+the call to the function 'gDNAdx()'.}
 
 \item{\code{igcfrglen}}{A 'list' object storing the fragment lengths derived from
 alignments in intergenic regions.}
@@ -117,5 +143,15 @@ head(igc, n=3)
 
 int <- getInt(gdnax)
 head(int, n=3)
+
+singleEnd(gdnax)
+
+strandMode(gdnax)
+
+strandMode(gdnax) <- NA
+
+allStrandModes(gdnax)
+
+strandedness(gdnax)
 
 }

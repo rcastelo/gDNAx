@@ -153,7 +153,8 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
     .checkMinNaln(strbysm, minnaln)
-    sm <- .decideStrandMode(strbysm)
+    ## sm <- .decideStrandMode(strbysm)
+    sm <- .classifyStrandMode(strbysm, warnweakstr=TRUE)
     
     strbysmtype <- list("strandMode"=sm, "Strandedness"=strbysm)
     strbysmtype
@@ -304,8 +305,9 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                     strbysm[, "strandMode2"] < strcutoff)
     if (any(weakstrmask) && warnweakstr) {
       wstr <- paste("%d BAM files show strandedness values in the interval",
-                    "  [%.1f, %.1f). Please run 'identifyStrandMode()'",
-                    "  to obtain full details on these values.", sep="\n")
+                    "  [%.1f, %.1f). Run and/or look at the output of",
+                    "  'identifyStrandMode()' to obtain full details on",
+                    "  these values.", sep="\n")
       warning(sprintf(wstr, sum(weakstrmask), weakstrcutoff, strcutoff))
     }
     sm[strbysm[, "strandMode1"] >= weakstrcutoff] <- 1L

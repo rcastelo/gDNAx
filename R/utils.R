@@ -52,29 +52,20 @@
     bfl
 }
 
-## private function .checkStrandMode() it assumes that .checkBamFiles(),
-## .checkYieldsize(), .checkPairedEnd() and .checkBamFileListArgs() have
-## been called before
+## private function .checkStrandMode()
 
-#' @importFrom methods is
 #' @importFrom S4Vectors isSingleNumber
-.checkStrandMode <- function(bfl, txdb, singleEnd, strandMode, stdChrom,
-                             exonsBy, minnaln, verbose, BPPARAM=SerialParam()) {
-    stopifnot(is(bfl, "BamFileList")) ## QC
-    if (!missing(strandMode)) {
-        if (!is.na(strandMode)) {
-            if (!isSingleNumber(strandMode))
-                stop("invalid strand mode (must be 0, 1, or 2)")
-            if (!is.integer(strandMode))
-                strandMode <- as.integer(strandMode)
-            if (!(strandMode %in% 0:2))
-                stop("invalid strand mode (must be 0, 1, or 2)")
-        } else {
+.checkStrandMode <- function(strandMode) {
+    if (!is.na(strandMode)) {
+        if (!isSingleNumber(strandMode))
+            stop("invalid strand mode (must be 0, 1, or 2)")
+        if (!is.integer(strandMode))
             strandMode <- as.integer(strandMode)
-        }
-    } else
-      strandMode <- .idstrandmode(bfl, txdb, singleEnd, stdChrom, exonsBy,
-                                  minnaln, verbose, BPPARAM)
+        if (!(strandMode %in% 0:2))
+            stop("invalid strand mode (must be 0, 1, or 2)")
+    } else {
+        strandMode <- as.integer(strandMode)
+    }
 
     strandMode
 }
@@ -344,12 +335,16 @@
         stop("'stdChrom' must be a logical value")
 }
 
-## private function .idstrandmode()
+
+## private function .estimateStrandedness() it assumes that .checkBamFiles(),
+## .checkYieldSize(), .checkPairedEnd() and .checkBamFileListArgs() have
+## been called before
 #' @importFrom methods is
 #' @importFrom Rsamtools scanBamFlag ScanBamParam
 #' @importFrom BiocParallel bpnworkers
-.idstrandmode <- function(bfl, txdb, singleEnd, stdChrom, exonsBy, minnaln,
-                          verbose, BPPARAM=SerialParam(progressbar=verbose)) {
+.estimateStrandedness <- function(bfl, txdb, singleEnd, stdChrom, exonsBy,
+                                  minnaln, verbose,
+                                  BPPARAM=SerialParam(progressbar=verbose)) {
     stopifnot(is(bfl, "BamFileList")) ## QC
 
     if (is.character(txdb))
@@ -382,6 +377,5 @@
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
     .checkMinNaln(strbysm, minnaln)
-    sm <- .classifyStrandMode(strbysm)
-    sm
+    as.data.frame(strbysm)
 }

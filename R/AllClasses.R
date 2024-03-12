@@ -10,12 +10,14 @@
 #' @slot singleEnd Logical value indicating if reads are single (\code{TRUE})
 #' or paired-end (\code{FALSE}).
 #'
-#' @slot strandMode Numeric vector which can take values 0, 1 or 2. The strand
-#' mode is a per-object switch on
-#' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-#' objects that controls the behavior of the strand getter. See
+#' @slot strandMode Integer value either 0, 1, 2 or \code{NA}, indicating how
+#' the strand of a pair of read alignments should be inferred from the strand
+#' of the first and last alignments in the pair. See the
 #' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 #' class for further detail.
+#'
+#' @slot allStrandModes Vector of integer values each of them corresponding to
+#' a \code{strandMode} value estimated from a BAM file.
 #'
 #' @slot stdChrom Logical value indicating whether only alignments in the
 #' 'standard chromosomes' should be used. Consult the help page of the function
@@ -29,6 +31,10 @@
 #'
 #' @slot diagnostics A 'data.frame' object storing the diagnostics calculated
 #' by the function 'gDNAdx()'.
+#'
+#' @slot strandedness A 'data.frame' object storing the estimated values of
+#' strandedness, calculated when the argument \code{strandMode} is missing in
+#' the call to the function 'gDNAdx()'.
 #'
 #' @slot igcfrglen A 'list' object storing the fragment lengths derived from
 #' alignments in intergenic regions.
@@ -78,10 +84,12 @@ setClass("gDNAx",
                         txdbpkg="character",
                         singleEnd="logical",
                         strandMode="integer",
+                        allStrandModes="integer",
                         stdChrom="logical",
                         readLength="integer",
                         yieldSize="integer",
                         diagnostics="data.frame",
+                        strandedness="data.frame",
                         igcfrglen="list",
                         intfrglen="list",
                         scjfrglen="list",
@@ -201,3 +209,86 @@ setMethod("getInt", "gDNAx",
             function(x) {
                 x@intronic
             })
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @examples
+#' singleEnd(gdnax)
+#' 
+#' @export
+#' @aliases singleEnd
+#' @aliases singleEnd,gDNAx-method
+#' @rdname gDNAx-class
+setMethod("singleEnd", "gDNAx",
+          function(x) x@singleEnd
+         )
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @examples
+#' strandMode(gdnax)
+#' 
+#' @importFrom GenomicAlignments strandMode
+#' 
+#' @export
+#' @aliases strandMode
+#' @aliases strandMode,gDNAx-method
+#' @rdname gDNAx-class
+setMethod("strandMode", "gDNAx",
+          function(x) x@strandMode
+         )
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @examples
+#' strandMode(gdnax) <- NA
+#' 
+#' @importFrom S4Vectors isSingleNumber
+#' @importFrom GenomicAlignments strandMode<-
+#' 
+#' @export
+#' @aliases strandMode<-
+#' @aliases strandMode<-,gDNAx-method
+#' @rdname gDNAx-class
+setReplaceMethod("strandMode", "gDNAx",
+                 function(x) {
+                     if (singleEnd(x))
+                         stop("Cannot set strand mode on single-end data.")
+                     if (!is.na(x)) {
+                         if (!isSingleNumber(x))
+                           stop("invalid strand mode (must be 0, 1, 2, or NA).")
+                         if (!is.integer(x))
+                           x <- as.integer(x)
+                         if (!(x %in% 0:2))
+                           stop("invalid strand mode (must be 0, 1, 2, or NA).")
+                     } else
+                         x <- as.integer(x)
+                     x@strandMode <- x
+                 })
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @examples
+#' allStrandModes(gdnax)
+#' 
+#' @export
+#' @aliases allStrandModes
+#' @aliases allStrandModes,gDNAx-method
+#' @rdname gDNAx-class
+setMethod("allStrandModes", "gDNAx",
+          function(x) x@allStrandModes
+         )
+
+#' @param x A \linkS4class{gDNAx} object.
+#'
+#' @examples
+#' strandedness(gdnax)
+#' 
+#' @export
+#' @aliases strandedness
+#' @aliases strandedness,gDNAx-method
+#' @rdname gDNAx-class
+setMethod("strandedness", "gDNAx",
+          function(x) x@strandedness
+         )
+

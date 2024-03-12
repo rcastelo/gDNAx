@@ -99,9 +99,16 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize)
     .checkOtherArgs(singleEnd, stdChrom)
-    strandMode <- .checkStrandMode(bfl, txdb, singleEnd, strandMode, stdChrom,
-                                   exonsBy, minnaln, verbose, BPPARAM)
-    oneStrandMode <- as.integer(names(which.max(table(strandMode, useNA="always"))))
+    if (!missing(strandMode))
+        strandMode <- .checkStrandMode(strandMode)
+    else {
+        strandedness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
+                                              exonsBy, minnaln, verbose,
+                                              BPPARAM)
+        allStrandModes <- .classifyStrandMode(strandedness)
+        smtab <- table(allStrandModes, useNA="always")
+        strandMode <- as.integer(names(which.max(smtab)))
+    }
 
     rlens <- .readLengths(bfl, singleEnd)
     maxfrglen <- max(rlens)
@@ -109,7 +116,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
       maxfrglen <- 2 * max(rlens)
     if (verbose)
         message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
-    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, stdChrom, oneStrandMode)
+    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, stdChrom, strandMode)
     exbytx <- exonsBy(txdb, by="tx") ## fetch transcript annotations
     if (stdChrom) {
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
@@ -135,17 +142,17 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         dxBAMs <- bplapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                            int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                            stdChrom=stdChrom,singleEnd=singleEnd,
-                           strandMode=oneStrandMode, param=param,
+                           strandMode=strandMode, param=param,
                            verbose=verbose, BPPARAM=BPPARAM)
     } else
         dxBAMs <- lapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                          int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                          stdChrom=stdChrom, singleEnd=singleEnd,
-                         strandMode=oneStrandMode, param=param, verbose=verbose)
+                         strandMode=strandMode, param=param, verbose=verbose)
     
     dxobj <- .collectDiagn(dxBAMs, bfl, rlens, singleEnd, txdb, strandMode,
-                           stdChrom, yieldSize, igcintrng, exbytx, tx2gene,
-                           verbose)
+                           allStrandModes, stdChrom, yieldSize, strandedness,
+                           igcintrng, exbytx, tx2gene, verbose)
     dxobj
 }
 
@@ -460,8 +467,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom BiocGenerics path
 #' @importFrom methods new
 .collectDiagn <- function(dxBAMs, bfl, readLength, singleEnd, txdb, strandMode,
-                          stdChrom, yieldSize, igcintrng, exbytx, tx2gene,
-                          verbose) {
+                          allStrandModes, stdChrom, yieldSize, strandedness,
+                          igcintrng, exbytx, tx2gene, verbose) {
     if (verbose)
         message("Collecting diagnostics")
     igcpct <- vapply(dxBAMs, function(x)  ## intergenic %
@@ -488,10 +495,10 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         stopifnot(identical(names(bfl),  names(igcpct)))
         snames <- path(bfl)
     }
-    dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct,SCC=sccpct,
-                    IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
-                    SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
-                    STRAND=strness, row.names=snames)
+    dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct, SCC=sccpct,
+                     IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
+                     SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
+                     STRAND=strness, row.names=snames)
     igcfrglen <- lapply(dxBAMs, function(x) x$igcfrglen)
     intfrglen <- lapply(dxBAMs, function(x) x$intfrglen)
     scjfrglen <- lapply(dxBAMs, function(x) x$scjfrglen)
@@ -501,11 +508,12 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     names(scjfrglen) <- gsub(".bam", "", names(scjfrglen))
     names(scefrglen) <- gsub(".bam", "", names(scefrglen))
     new("gDNAx", bfl=bfl, txdbpkg=txdb$packageName, singleEnd=singleEnd,
-        strandMode=strandMode, stdChrom=stdChrom, readLength=readLength,
-        yieldSize=yieldSize, diagnostics=dx, igcfrglen=igcfrglen,
-        intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen,
-        intergenic=igcintrng$igcrng, intronic=igcintrng$intrng,
-        transcripts=exbytx, tx2gene=tx2gene)
+        strandMode=strandMode, allStrandModes=allStrandModes,
+        stdChrom=stdChrom, readLength=readLength, yieldSize=yieldSize,
+        diagnostics=dx, strandedness=strandedness,
+        igcfrglen=igcfrglen, intfrglen=intfrglen, scjfrglen=scjfrglen,
+        scefrglen=scefrglen, intergenic=igcintrng$igcrng,
+        intronic=igcintrng$intrng, transcripts=exbytx, tx2gene=tx2gene)
 }
 
 #' Plot diagnostics
