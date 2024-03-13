@@ -446,7 +446,7 @@ testBAMtxFlag <- function(flag, value) {
 #' @importFrom IRanges coverage resize width slidingWindows Views viewSums
 #' @importFrom IRanges RleList IntegerList relist lapply
 #' @importFrom GenomicRanges GRanges GRangesList grglist granges ranges trim
-#' @importFrom GenomicRanges start start<- end end<- match
+#' @importFrom GenomicRanges seqnames start start<- end end<- match
 #' @importFrom GenomicAlignments first last
 #' @importFrom matrixStats rowMins
 
@@ -576,7 +576,7 @@ testBAMtxFlag <- function(flag, value) {
     ## with a given hypothesized strandedness proportion above which we consider
     ## a target read alignment to occur in a stranded window
     p <- pbinom(unlist(scnt, use.names=FALSE), unlist(scnttot, use.names=FALSE),
-                p=pstrness, lower.tail=FALSE)
+                prob=pstrness, lower.tail=FALSE)
     p <- relist(p, scnt)
 
     ## re-arrange window p-values by unique target read alignment, select the

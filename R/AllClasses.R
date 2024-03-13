@@ -63,16 +63,14 @@
 #' transcripts and genes according to an 'TxDb' object.
 #'
 #' @examples
-#' # Getting the 'gDNAx' object. Can be done using the commented code:
-#' # library(gDNAinRNAseqData)
-#' # library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-#' # txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-#' # bamfiles <- LiYu22subsetBAMfiles() # Retrieving BAM files
-#' # gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-#' 
-#' # Here to reduce example running time, the 'gDNAx' object is loaded
-#' gdnax_f <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-#' gdnax <- readRDS(gdnax_f)
+#' library(gDNAinRNAseqData)
+#' library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+#' txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+#' bamfiles <- LiYu22subsetBAMfiles() # Retrieving BAM files
+#' ## one could simply call 'gDNAx(bamfiles, txdb)' but we give the arguments
+#' ## below to reduce time and verbosity when running this example
+#' gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA,
+#'                 useRMSK=FALSE, verbose=FALSE)
 #' gdnax
 #' 
 #'
@@ -143,28 +141,31 @@ setMethod("show", "gDNAx",
                                           "paired-end,"),
                                    paste(rlenstr, collapse=", "))
                 cat(sprintf("# Library layout: %s\n", rlenstr))
-                oneStrandMode <- object@strandMode
                 pstr <- smstr <- ""
-                if (length(object@strandMode) > 1) {
-                    tab <- table(object@strandMode, useNA="always")
+                if (length(object@allStrandModes) > 1) {
+                    tab <- table(object@allStrandModes, useNA="always")
                     maxsm <- names(which.max(tab))
                     nmaxsm <- tab[maxsm]
                     if (is.na(maxsm)) ## unstranded
-                      nmaxsm <- sum(is.na(object@strandMode))
+                      nmaxsm <- sum(is.na(object@allStrandModes))
                     pstr <- sprintf("(%d out of %d)", nmaxsm, sum(tab))
                     if (!is.na(maxsm)) ## stranded
                         pstr <- sprintf("(%d out of %d)",
                                         sum(tab[!is.na(names(tab))]), sum(tab))
                     smstr <- sprintf("(%d in mode 1, %d in mode 2)", tab["1"],
                                      tab["2"])
-                    oneStrandMode <- as.integer(maxsm)
                 }
-                if (is.na(oneStrandMode))
+                if (is.na(object@strandMode))
                     cat(sprintf("# Library protocol: unstranded %s\n", pstr))
-                else
-                    cat(sprintf("# Library protocol: stranded %s\n", pstr))
-                if (!is.na(oneStrandMode) && !object@singleEnd)
-                    cat(sprintf("# Strand mode: %d %s\n", oneStrandMode, smstr))
+                else {
+                    if (object@singleEnd)
+                        cat(sprintf("# Library protocol: stranded %s\n", pstr))
+                    else {
+                        ststr <- paste("# Library protocol: stranded %s,",
+                                       "mode %d %s\n")
+                        cat(sprintf(ststr, pstr, object@strandMode, smstr))
+                    }
+                }
                 if (object@stdChrom)
                     cat("# Sequences: only standard chromosomes\n")
                 else
@@ -239,6 +240,11 @@ setMethod("strandMode", "gDNAx",
          )
 
 #' @param x A \linkS4class{gDNAx} object.
+#' @param value Integer value either 0, 1, 2 or \code{NA}, indicating how
+#' the strand of a pair of read alignments should be inferred from the strand
+#' of the first and last alignments in the pair. See the
+#' \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+#' class for further detail.
 #'
 #' @examples
 #' strandMode(gdnax) <- NA
@@ -251,19 +257,20 @@ setMethod("strandMode", "gDNAx",
 #' @aliases strandMode<-,gDNAx-method
 #' @rdname gDNAx-class
 setReplaceMethod("strandMode", "gDNAx",
-                 function(x) {
+                 function(x, value) {
                      if (singleEnd(x))
                          stop("Cannot set strand mode on single-end data.")
-                     if (!is.na(x)) {
-                         if (!isSingleNumber(x))
+                     if (!is.na(value)) {
+                         if (!isSingleNumber(value))
                            stop("invalid strand mode (must be 0, 1, 2, or NA).")
-                         if (!is.integer(x))
-                           x <- as.integer(x)
-                         if (!(x %in% 0:2))
+                         if (!is.integer(value))
+                           value <- as.integer(value)
+                         if (!(value %in% 0:2))
                            stop("invalid strand mode (must be 0, 1, 2, or NA).")
                      } else
-                         x <- as.integer(x)
-                     x@strandMode <- x
+                         value <- as.integer(value)
+                     x@strandMode <- value
+                     x
                  })
 
 #' @param x A \linkS4class{gDNAx} object.

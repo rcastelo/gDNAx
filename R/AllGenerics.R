@@ -4,8 +4,8 @@ setGeneric("getIgc", function(x) standardGeneric("getIgc"))
 
 setGeneric("getInt", function(x) standardGeneric("getInt"))
 
-setGeneric("singleEnd", function(x) standradGeneric("singleEnd"))
+setGeneric("singleEnd", function(x) standardGeneric("singleEnd"))
 
-setGeneric("allStrandModes", function(x) standradGeneric("allStrandModes"))
+setGeneric("allStrandModes", function(x) standardGeneric("allStrandModes"))
 
-setGeneric("strandedness", function(x) standradGeneric("strandedness"))
+setGeneric("strandedness", function(x) standardGeneric("strandedness"))

@@ -45,6 +45,12 @@
 \item{x}{A \linkS4class{gDNAx} object.}
 
 \item{object}{A \linkS4class{gDNAx} object.}
+
+\item{value}{Integer value either 0, 1, 2 or \code{NA}, indicating how
+the strand of a pair of read alignments should be inferred from the strand
+of the first and last alignments in the pair. See the
+\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+class for further detail.}
 }
 \value{
 \code{features()}: A \code{GRanges} object with intergenic ranges.
@@ -119,16 +125,13 @@ transcripts and genes according to an 'TxDb' object.}
 }}
 
 \examples{
-# Getting the 'gDNAx' object. Can be done using the commented code:
-# library(gDNAinRNAseqData)
-# library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-# txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-# bamfiles <- LiYu22subsetBAMfiles() # Retrieving BAM files
-# gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA)
-
-# Here to reduce example running time, the 'gDNAx' object is loaded
-gdnax_f <- file.path(system.file("extdata", package="gDNAx"), "gdnax.rds")
-gdnax <- readRDS(gdnax_f)
+library(gDNAinRNAseqData)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+bamfiles <- LiYu22subsetBAMfiles() # Retrieving BAM files
+## setting 'useRMSK=FALSE' just to reduce the run time of this example
+gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA,
+                useRMSK=FALSE)
 gdnax
 
 

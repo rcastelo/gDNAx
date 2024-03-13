@@ -103,6 +103,7 @@
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers
+#' @importFrom cli cli_progress_bar cli_progress_done
 #' @export
 #' @rdname strandedness
 
@@ -114,13 +115,11 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     
     ## yieldSize here is set to avoid error, but internally 200K is used
     bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize=10000L)
-    .checkOtherArgs(singleEnd, stdChrom)
+    .checkSEandSCargs(singleEnd, stdChrom)
     
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
-    if (verbose)
-        message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
     
     ## fetch annotations
     annot <- exonsBy(txdb, by=exonsBy)
@@ -135,9 +134,6 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
                            isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
     
-    if (verbose)
-        message("Start scanning BAM file(s)")
-    
     # strandedness by strandMode
     strbysm <- NULL
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
@@ -145,10 +141,15 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
         strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                             singleEnd=singleEnd, strandMode=1L, param=param,
                             minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
-    } else
+    } else {
+        if (verbose)
+            idpb <- cli_progress_bar("Estimating strandedness", total=length(bfl))
         strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                           singleEnd=singleEnd, strandMode=1L, param=param,
-                          minnaln=minnaln, verbose=verbose)
+                          minnaln=minnaln, verbose=verbose, idpb=idpb)
+        if (verbose)
+            cli_progress_done(idpb)
+    }
     
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
@@ -166,13 +167,11 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @importFrom Rsamtools isOpen yieldSize yieldSize<-
 #' @importFrom GenomicAlignments readGAlignments readGAlignmentPairs
 #' @importFrom GenomeInfoDb keepStandardChromosomes
+#' @importFrom cli cli_progress_update
 .strness_oneBAM <- function(bf, tx, stdChrom, singleEnd, strandMode=1L,
-                            param, minnaln, verbose) {
+                            param, minnaln, verbose, idpb) {
     if (isOpen(bf))
         close(bf)
-    
-    if (verbose)
-        message(sprintf("Computing strandedness from %s", basename(path(bf))))
     
     yieldSize <- yieldSize(bf)
     yieldSize(bf) <- minnaln+50000
@@ -217,6 +216,10 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     
     strbysm <- c(strness, strnessis, strnessambig, naln)
     names(strbysm) <- c("strandMode1", "strandMode2", "ambig", "Nalignments")
+
+    if (verbose)
+      cli_progress_update(id=idpb)
+
     strbysm
 }
 
@@ -228,7 +231,6 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 #' @importFrom GenomicAlignments invertStrand strandMode
 #' @importFrom GenomicRanges GRanges
 .getStrandedness <- function(gal, tx, reportAll=FALSE) {
-    
     if (reportAll & is(gal, "GAlignmentPairs")) 
         if (strandMode(gal) != 1L)
             stop("strandMode of 'gal' must be 1L when ",
@@ -317,16 +319,14 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
 
 ## Private function to issue a warning when the strandedness value is
 ## computed from a low number of alignments
+#' @importFrom cli cli_alert_danger
 .checkMinNaln <- function(strbysm, minnaln) {
     
     lownaln <- strbysm[,"Nalignments"] < minnaln
     
     if (any(lownaln)) {
-        wstr <- paste("%d BAM files had less than %d alignments overlapping",
-                      "  exonic regions. Run and/or look at the output of",
-                      "  'identifyStrandMode()' to obtain full details on",
-                      "  these values.", sep="\n")
-        warning(sprintf(wstr, sum(lownaln), minnaln))
+        wstr <- "%d BAM files had < %d alignments overlapping exonic regions"
+        cli_alert_danger(sprintf(wstr, sum(lownaln), minnaln))
     }
 }
 

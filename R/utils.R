@@ -130,7 +130,8 @@
 
 #' @importFrom Rsamtools yieldSize yieldSize<- scanBamFlag scanBam
 #' @importFrom S4Vectors unname
-.readLengths <- function(bfl, singleEnd, BPPARAM=SerialParam()) {
+#' @importFrom cli cli_alert_info
+.readLengths <- function(bfl, singleEnd, verbose, BPPARAM=SerialParam()) {
     stopifnot(length(bfl) > 0) ## QC
     qw <- function(bf, singleEnd) { ## figure out most freq. query width in first 10K aln.
         yieldSize <- yieldSize(bf)
@@ -160,10 +161,12 @@
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         bpparsilent <- BPPARAM
         bpprogressbar(bpparsilent) <- FALSE
-        rlen <- unlist(bplapply(bfl, qw, singleEnd=singleEnd, BPPARAM=bpparsilent),
+        rlen <- unlist(bplapply(bfl, qw, singleEnd=singleEnd,
+                                BPPARAM=bpparsilent),
                        use.names=FALSE)
     } else
-        rlen <- unname(vapply(bfl, qw, singleEnd=singleEnd, FUN.VALUE=integer(1L)))
+        rlen <- unname(vapply(bfl, qw, singleEnd=singleEnd,
+                              FUN.VALUE=integer(1L)))
     ## sometimes shorter read lengths arise from read trimming, we identify
     ## those shorter lengths as less frequent in the whole dataset and replace
     ## them by the most frequent one, which should be the original layout
@@ -171,7 +174,20 @@
     highfreqrlen <- as.integer(names(freq)[which.max(freq)])
     lowfreqrlen <- as.integer(names(freq)[freq < 0.1])
     rlen[rlen %in% lowfreqrlen] <- highfreqrlen
-    as.integer(rlen)
+    rlen <- as.integer(rlen)
+
+    if (verbose) {
+      urlen <- sort(unique(rlen))
+      rlenstr <- sprintf("%d (%s%dnt)", table(rlen),
+                         ifelse(singleEnd, "", "2x"), urlen)
+      rlenstr <- sprintf("%s, %s",
+                         ifelse(singleEnd, "single-end",
+                                "paired-end"),
+                         paste(rlenstr, collapse=", "))
+      cli_alert_info("Library layout: {rlenstr}.")
+    }
+
+    rlen
 }
 
 ## private function .ppprintnames() for pretty-printing
@@ -186,6 +202,7 @@
 
 ## private function .loadAnnotationPackageObject()
 #' @importFrom utils installed.packages
+#' @importFrom cli cli_alert_success
 .loadAnnotationPackageObject <- function(pkgName, argName, pkgType,
                                          verbose=TRUE) {
 
@@ -194,18 +211,18 @@
 
     if (is.character(pkgName)) {
         if (!pkgName %in% installed.packages(noCache=TRUE)[, "Package"])
-            stop(sprintf("please install the Bioconductor package %s.", 
+            stop(sprintf("Please install the Bioconductor package %s.", 
                          pkgName))
         if (!.isPkgLoaded(pkgName)) {
-            if (verbose)
-                message("Loading ", pkgType, " annotation package ", pkgName)
-            loaded <- suppressPackageStartupMessages(requireNamespace(pkgName,
-                                                        character.only=TRUE))
-            if (!loaded)
-                stop(sprintf("package %s could not be loaded.", pkgName))
+            loaded <- suppressPackageStartupMessages(requireNamespace(pkgName))
+            if (loaded && verbose)
+                cli_alert_success("Loaded {pkgType} annotation package {pkgName}.")
+            else if (!loaded)
+                stop(sprintf("Package %s could not be loaded.", pkgName))
         }
         tryCatch({
-            attachNamespace(pkgName)
+            if (!paste0("package:", pkgName) %in% search())
+                attachNamespace(pkgName)
             annotObj <- get(pkgName)
         }, error=function(err) {
             fmtstr <- paste("The annotation package %s should automatically load",
@@ -224,8 +241,8 @@
 
     if (!is(annotObj, pkgType))
         stop(sprintf("The object loaded with name %s is not an '%s' object.",
-                    ifelse(is.character(pkgName), pkgName,
-                           gettext(callobj)[2])), pkgType)
+                     ifelse(is.character(pkgName), pkgName,
+                            gettext(callobj)[2])), pkgType)
 
     annotObj
 }
@@ -242,9 +259,9 @@
 #' @importFrom GenomeInfoDb genome genome<-
 .matchSeqinfo <- function(gal, tx, verbose=TRUE) {
     stopifnot("GAlignments" %in% class(gal) ||
-               "GAlignmentPairs" %in% class(gal) ||
-               "GAlignmentsList" %in% class(gal) ||
-               "TxDb" %in% class(tx)) ## QC
+              "GAlignmentPairs" %in% class(gal) ||
+              "GAlignmentsList" %in% class(gal) ||
+              "TxDb" %in% class(tx)) ## QC
 
     if (length(intersect(seqlevelsStyle(gal), seqlevelsStyle(tx))) > 0)
       return(gal)
@@ -327,12 +344,16 @@
     hits
 }
 
-## private function .checkOtherArgs()
-.checkOtherArgs <- function(singleEnd, stdChrom) {
-    if (!is.logical(singleEnd))
-        stop("'singleEnd' must be a logical value")
-    if (!is.logical(stdChrom))
-        stop("'stdChrom' must be a logical value")
+## private function .checkSEandSCargs()
+.checkSEandSCargs <- function(singleEnd, stdChrom) {
+    if (!missing(singleEnd)) {
+        if (!is.logical(singleEnd) || length(singleEnd) != 1)
+            stop("'singleEnd' must be a single logical value")
+    }
+    if (!missing(stdChrom)) {
+        if (!is.logical(stdChrom) || length(stdChrom) != 1)
+            stop("'stdChrom' must be a logical value")
+    }
 }
 
 
@@ -342,6 +363,7 @@
 #' @importFrom methods is
 #' @importFrom Rsamtools scanBamFlag ScanBamParam
 #' @importFrom BiocParallel bpnworkers
+#' @importFrom cli cli_progress_bar cli_progress_done
 .estimateStrandedness <- function(bfl, txdb, singleEnd, stdChrom, exonsBy,
                                   minnaln, verbose,
                                   BPPARAM=SerialParam(progressbar=verbose)) {
@@ -350,10 +372,7 @@
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
-    if (verbose)
-        message(sprintf("Fetching annotations for %s", genome(txdb)[1]))
 
-    ## fetch annotations
     annot <- exonsBy(txdb, by=exonsBy)
     if (stdChrom) {
         annot <- keepStandardChromosomes(annot, pruning.mode="fine")
@@ -370,10 +389,15 @@
         strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                             singleEnd=singleEnd, strandMode=1L, param=param,
                             minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
-    } else
+    } else {
+        if (verbose)
+            idpb <- cli_progress_bar("Estimating strandedness", total=length(bfl))
         strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                           singleEnd=singleEnd, strandMode=1L, param=param,
-                          minnaln=minnaln, verbose=verbose)
+                          minnaln=minnaln, verbose=verbose, idpb=idpb)
+        if (verbose)
+            cli_progress_done(idpb)
+    }
     names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
     strbysm <- do.call("rbind", strbysm)
     .checkMinNaln(strbysm, minnaln)
