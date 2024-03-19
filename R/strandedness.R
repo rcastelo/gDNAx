@@ -1,5 +1,8 @@
 #' Identify strandMode
 #'
+#' THIS FUNCTION HAS BEEN DEPRECATED, HAS BEEN REPLACED BY \code{strandedness()}
+#' AND WILL WILL BE DEFUNCT AT THE NEXT RELEASE.
+#'
 #' Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
 #' the proportion of reads aligning to the same or opposite strand as
 #' transcripts in the annotations.
@@ -96,70 +99,73 @@
 #' strandM$strandMode
 #' head(strandM$Strandedness)
 #'
-#' @importFrom BiocGenerics basename path
-#' @importFrom S4Vectors mcols mcols<-
-#' @importFrom Rsamtools scanBamFlag ScanBamParam
-#' @importFrom AnnotationDbi select
-#' @importFrom GenomicFeatures exonsBy
-#' @importFrom GenomeInfoDb keepStandardChromosomes genome
-#' @importFrom BiocParallel SerialParam bplapply bpnworkers
-#' @importFrom cli cli_progress_bar cli_progress_done
+#' @importFrom BiocParallel SerialParam
 #' @export
 #' @rdname strandedness
 
-identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
+identifyStrandMode <- function(bfl, txdb, singleEnd, stdChrom=TRUE,
                                exonsBy=c("gene", "tx"), minnaln=200000,
                                verbose=TRUE,
                                BPPARAM=SerialParam(progressbar=verbose)) {
-    exonsBy <- match.arg(exonsBy)
-    
-    ## yieldSize here is set to avoid error, but internally 200K is used
-    bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize=10000L)
-    .checkSEandSCargs(singleEnd, stdChrom)
-    
-    if (is.character(txdb))
-        txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
-                                             verbose=verbose)
-    
-    ## fetch annotations
-    annot <- exonsBy(txdb, by=exonsBy)
-    if (stdChrom) {
-        annot <- keepStandardChromosomes(annot, pruning.mode="fine")
-        annot <- annot[lengths(annot) > 0]
-    }
-    sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
-                           isProperPair=!singleEnd,
-                           isSecondaryAlignment=FALSE,
-                           isDuplicate=FALSE,
-                           isNotPassingQualityControls=FALSE)
-    param <- ScanBamParam(flag=sbflags)
-    
-    # strandedness by strandMode
-    strbysm <- NULL
-    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
-        verbose <- FALSE
-        strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
-                            singleEnd=singleEnd, strandMode=1L, param=param,
-                            minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
-    } else {
-        if (verbose)
-            idpb <- cli_progress_bar("Estimating strandedness", total=length(bfl))
-        strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
-                          singleEnd=singleEnd, strandMode=1L, param=param,
-                          minnaln=minnaln, verbose=verbose, idpb=idpb)
-        if (verbose)
-            cli_progress_done(idpb)
-    }
-    
-    names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
-    strbysm <- do.call("rbind", strbysm)
-    .checkMinNaln(strbysm, minnaln)
-    ## sm <- .decideStrandMode(strbysm)
-    sm <- .classifyStrandMode(strbysm, warnweakstr=TRUE)
-    
-    strbysmtype <- list("strandMode"=sm, "Strandedness"=strbysm)
+    .Deprecated("strandedness")
+    strness <- strandedness(bfl, txdb, singleEnd, stdChrom, exonsBy, minnaln,
+                            verbose, BPPARAM)
+    sm <- .classifyStrandMode(strness, warnweakstr=TRUE)
+
+    strbysmtype <- list("strandMode"=sm, "Strandedness"=strness)
     strbysmtype
 }
+
+#' @importFrom BiocParallel SerialParam
+#' @export
+#' @aliases strandedness,character-method
+#' @rdname strandedness
+
+setMethod("strandedness", "character",
+          function(x, txdb, singleEnd, stdChrom=TRUE, exonsBy=c("gene", "tx"),
+                   minnaln=200000, verbose=TRUE,
+                   BPPARAM=SerialParam(progressbar=verbose)) {
+              exonsBy <- match.arg(exonsBy)
+    
+              bfl <- .checkBamFiles(x)
+              .checkSEandSCargs(singleEnd, stdChrom)
+
+              if (is.character(txdb))
+                  txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
+                                             verbose=verbose)
+
+              singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
+              bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize=100000L)
+              strandedness(bfl, txdb, singleEnd, stdChrom, exonsBy, minnaln,
+                           verbose, BPPARAM)
+          })
+
+#' @importFrom BiocParallel SerialParam
+#' @export
+#' @aliases strandedness,BamFileList-method
+#' @rdname strandedness
+
+setMethod("strandedness", "BamFileList",
+          function(x, txdb, singleEnd, stdChrom=TRUE, exonsBy=c("gene", "tx"),
+                   minnaln=200000, verbose=TRUE,
+                   BPPARAM=SerialParam(progressbar=verbose)) {
+              exonsBy <- match.arg(exonsBy)
+    
+              bfl <- .checkBamFiles(x)
+              .checkSEandSCargs(singleEnd, stdChrom)
+
+              if (is.character(txdb))
+                  txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
+                                             verbose=verbose)
+
+              singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
+              bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize=100000L)
+
+              strness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
+                                               exonsBy, minnaln, verbose, BPPARAM)
+
+              strness
+          })
 
 ## Private function to get strandedness from BAM file
 #
@@ -296,6 +302,7 @@ identifyStrandMode <- function(bfl, txdb, singleEnd=TRUE, stdChrom=TRUE,
     
     sm
 }
+
 .classifyStrandMode <- function(strbysm, strcutoff=0.9, weakstrcutoff=0.6,
                                 warnweakstr=FALSE) {
     sm <- rep(NA, nrow(strbysm))

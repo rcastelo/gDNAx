@@ -39,7 +39,7 @@
 
 \S4method{allStrandModes}{gDNAx}(x)
 
-\S4method{strandedness}{gDNAx}(x)
+\S4method{strandedness}{gDNAx}(x, ...)
 }
 \arguments{
 \item{x}{A \linkS4class{gDNAx} object.}
@@ -129,9 +129,10 @@ library(gDNAinRNAseqData)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 bamfiles <- LiYu22subsetBAMfiles() # Retrieving BAM files
-## setting 'useRMSK=FALSE' just to reduce the run time of this example
+## one could simply call 'gDNAx(bamfiles, txdb)' but we give the arguments
+## below to reduce time and verbosity when running this example
 gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=NA,
-                useRMSK=FALSE)
+                useRMSK=FALSE, verbose=FALSE)
 gdnax
 
 

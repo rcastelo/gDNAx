@@ -2,13 +2,37 @@
 % Please edit documentation in R/strandedness.R
 \name{identifyStrandMode}
 \alias{identifyStrandMode}
+\alias{strandedness,character-method}
+\alias{strandedness,BamFileList-method}
 \alias{strnessByFeature}
 \title{Identify strandMode}
 \usage{
 identifyStrandMode(
   bfl,
   txdb,
-  singleEnd = TRUE,
+  singleEnd,
+  stdChrom = TRUE,
+  exonsBy = c("gene", "tx"),
+  minnaln = 2e+05,
+  verbose = TRUE,
+  BPPARAM = SerialParam(progressbar = verbose)
+)
+
+\S4method{strandedness}{character}(
+  x,
+  txdb,
+  singleEnd,
+  stdChrom = TRUE,
+  exonsBy = c("gene", "tx"),
+  minnaln = 2e+05,
+  verbose = TRUE,
+  BPPARAM = SerialParam(progressbar = verbose)
+)
+
+\S4method{strandedness}{BamFileList}(
+  x,
+  txdb,
+  singleEnd,
   stdChrom = TRUE,
   exonsBy = c("gene", "tx"),
   minnaln = 2e+05,
@@ -122,15 +146,19 @@ A \linkS4class{SummarizedExperiment} with three assays:
 }
 }
 \description{
-Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
-the proportion of reads aligning to the same or opposite strand as
-transcripts in the annotations.
+THIS FUNCTION HAS BEEN DEPRECATED, HAS BEEN REPLACED BY \code{strandedness()}
+AND WILL WILL BE DEFUNCT AT THE NEXT RELEASE.
 
 Compute strandedness for each feature in RNA-seq data samples based on
 the proportion of reads aligning to the same strand as feature annotations
 in relation to the total number of reads aligning to that feature.
 }
 \details{
+Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
+the proportion of reads aligning to the same or opposite strand as
+transcripts in the annotations.
+
+
 If the value in the "strandMode1" column is > 0.90, \code{strandMode} is set
 to 1L. If "strandMode2" column is > 0.90, \code{strandMode} is set to 2L. If
 "strandMode1" and "strandMode2" are comprised between 0.40 and 0.60,

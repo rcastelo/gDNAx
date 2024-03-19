@@ -113,19 +113,19 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
       maxfrglen <- 2 * max(rlens)
 
     allStrandModes <- integer(0)
-    strandedness <- matrix(numeric(0), nrow=0, ncol=4,
-                           dimnames=list(character(0),
-                                         c("strandMode1", "strandMode2",
-                                           "ambig", "Nalignments")))
-    strandedness <- as.data.frame(strandedness)
+    strness <- matrix(numeric(0), nrow=0, ncol=4,
+                      dimnames=list(character(0),
+                                    c("strandMode1", "strandMode2",
+                                      "ambig", "Nalignments")))
+    strness <- as.data.frame(strness)
 
     if (!missing(strandMode))
         strandMode <- .checkStrandMode(strandMode)
     else {
-        strandedness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
-                                              exonsBy, minnaln, verbose,
-                                              BPPARAM)
-        allStrandModes <- .classifyStrandMode(strandedness)
+        strness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
+                                         exonsBy, minnaln, verbose,
+                                         BPPARAM)
+        allStrandModes <- .classifyStrandMode(strness)
         smtab <- table(allStrandModes, useNA="always")
         strandMode <- as.integer(names(which.max(smtab)))
         if (verbose) {
@@ -183,7 +183,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     }
     
     dxobj <- .collectDiagn(dxBAMs, bfl, rlens, singleEnd, txdb, strandMode,
-                           allStrandModes, stdChrom, yieldSize, strandedness,
+                           allStrandModes, stdChrom, yieldSize, strness,
                            igcintrng, exbytx, tx2gene, verbose)
     dxobj
 }

@@ -73,11 +73,10 @@ is smaller than the one given through this parameter. This parameter only
 applies if no argument is given for the \code{strandMode} parameter.}
 
 \item{useRMSK}{(Default TRUE) Logical value indicating if RepeatMasker
-annotations should be considered when building intergenic and intronic
-annotations. When taken into consideration, then they will be downloaded
-as \code{\link[AnnotationHub]{AnnotationHub}} resources through the package
-\code{\link[UCSCRepeatMasker]{UCSCRepeatMasker}}, and intergenic and intronic
-annotations will exclude them.}
+annotations should be used when building intergenic and intronic genomic
+ranges for gDNA estimation. If \code{useRMSK=TRUE}, then UCSC RepeatMasker
+annotations will be downloaded as \code{\link[AnnotationHub]{AnnotationHub}}
+resources, and intergenic and intronic genomic ranges will exclude them.}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}

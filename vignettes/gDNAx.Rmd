@@ -37,76 +37,141 @@ knitr::opts_chunk$set(
 
 Genomic DNA (gDNA) contamination is an internal contaminant that can be 
 present in gene quantification techniques, such as in an RNA-sequencing 
-(RNA-seq) experiment. This
-contamination can be due to an absent or inefficient gDNA digestion step
-(with DNase) during the extraction of total RNA in the library
-preparation process. In fact, some protocols do not include a DNase treatment
-step, or they include it as optional.
+(RNA-seq) experiment. This contamination can be due to an absent or inefficient
+gDNA digestion step (with DNase) during RNA extraction or library preparation.
+In fact, some protocols do not include a DNase treatment step, or they include
+it as optional.
 
 While gDNA contamination is not a major issue for poly(A) RNA-seq, it can
 remarkably affect gene expression quantification of total RNA-seq experiments.
-Moreover, gDNA contamination can lead to a misleading attribution of 
-expression to unannotated regions of the genome. For this reason, it is
-important to check the level of gDNA contamination in the quality control 
-analysis before performing further analyses, specially when total RNA has
-been sequenced.
+Moreover, gDNA contamination can lead to a misleading attribution of expression
+to unannotated regions of the genome. For this reason, it is important to check
+the levels of gDNA contamination during quality control before performing
+further analyses, specially when total RNA has been sequenced.
 
 # Diagnose the presence of gDNA contamination
 
-Here we illustrate the use of the `gDNAx` package for calculating different
-diagnostics related to gDNA contamination levels.
-
-To do so, a subset of the data in [@li2022genes] is used. This data consists
-in 9 paired-end samples of total RNA-seq with increasing levels of gDNA
-contamination: 0% (no contamination), 1% and 10%, with 3 replicates each.
-The data is available through the `gDNAinRNAseqData` package. BAM files
-contain about 100,000 alignments, sampled uniformly at random from complete
-BAM files.
+Here we illustrate the use of the `gDNAx` package for producing different
+diagnostics and how do they reveal different gDNA contamination levels. We use
+a subset of the data in [@li2022genes], which consists of 9 paired-end samples
+of total RNA-seq with increasing levels of gDNA contamination: 0% (no
+contamination), 1% and 10%, with 3 replicates each. The data is available
+through the experiment data package
+[gDNAinRNAseqData](https://bioconductor.org/packages/gDNAinRNAseqData), which
+allows one to download 9 BAM files, containing about 100,000 alignments, sampled
+uniformly at random from the complete BAM files.
 
 ```{r, message=FALSE}
 library(gDNAinRNAseqData)
 
-# Retrieving BAM files
+# Retrieve BAM files
 bamfiles <- LiYu22subsetBAMfiles()
 bamfiles
 
-# Getting information about the gDNA concentrations of each BAM file
+# Retrieve information on the gDNA concentrations of each BAM file
 pdat <- LiYu22phenoData(bamfiles)
 pdat
 ```
 
-## Identifying `strandMode`
+Diagnosing the presence of gDNA contamination requires using an annotation
+of genes and transcripts. The `gDNAx` package expects that we provide such
+an annotation using a so-called `TxDb` package, either as a `TxDb` object,
+created once such a package is loaded in the R session, or by specifying the
+name of the package. The Bioconductor
+[website](https://www.bioconductor.org/packages/release/BiocViews.html#___TxDb)
+provides a number of `TxDb` packages, but if the we do not find the one we are
+looking for, we can build a `TxDb` object using the function `makeTxDbFromGFF()`
+from a given [GFF](https://en.wikipedia.org/wiki/General_feature_format) or
+[GTF](https://en.wikipedia.org/wiki/Gene_transfer_format) file, or any of the
+other `makeTxDbFrom*()` functions, available in the
+[GenomicFeatures](https://bioconductor.org/packages/GenomicFeatures) package.
+Here we load the `TxDb` package corresponding to the GENCODE annotation provided
+by the UCSC Genome Browser.
 
-The `strandMode` of a sample depends on the library protocol used: it can be
-strand-specific (stranded) or non strand-specific (non-stranded). Stranded
-paired-end RNA-seq is, in turn, divided into: libraries were
-the pair strand is that of the first alignment and libraries were the pair
-strand is that of the second alignment.
+```{r, message=FALSE}
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 
-Function `identifyStrandMode()` can be used to try to identify the library
-protocol used:
-```{r, message=FALSE, warning=FALSE}
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
+```
+
+We can calculate diagnostics for gDNA contamination using the function
+`gDNAdx()` from the `gDNAx` package, as follows.
+
+```{r, message=FALSE}
 library(gDNAx)
 
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
-
-## strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
-## strandM$strandMode
+gdnax <- gDNAdx(bamfiles, txdb)
+class(gdnax)
+gdnax
 ```
 
-The `strandMode` identified is `NA`, meaning that a non-stranded protocol
-was used. See the "Details" section in the help page of `identifyStrandMode()`
-for further details.
+The previous call will report progress through its calculations unless we set
+the argument `verbose=FALSE`, and return an object of class `gDNAx` once it has
+finished. Calling the `plot()` function with that object as the first argument
+will plot several diagnostics. Here below, we also use a parameter called
+`group` to automatically color samples, in this case, by the gDNA contamination
+levels included in the experimental design of the data; see [@li2022genes] for
+full details on it.
 
-Let's take a look at the `data.frame` with all strandedness values. The
-strandedness values are based on the proportion of reads aligning to the 
-same or opposite strand as transcripts in the annotations. See help page of
-`identifyStrandMode()` for more information.
+
+```{r defdiag, height=12, width=10, out.width="800px", fig.cap="Default diagnostics by the function `plot()` on a `gDNAx` object."}
+par(mar=c(4, 5, 2, 1))
+plot(gdnax, group=pdat$gDNA, pch=19)
+```
+
+The previous figure contains three diagnostic plots, each one showing the
+following values as a function of the percentage of intergenic alignments:
+
+* Percentage of **Splice-compatible junction** (SCJ) alignments. These are
+  alignments compatible with a transcript in the given annotation, for which
+  the aligned read, or at least one of the two aligned reads in the case of
+  a paired-end layout, spans an exon-exon junction over two exons of that
+  transcript.
+* Percentage of **splice compatible exonic** (SCE) alignments. These are
+  alignments compatible with a transcript in the given annotation, but which
+  differently to SCJ alignments, do not include an exon-exon junction in the
+  alignment.
+* Percentage of **intronic** (INT) alignments. These are alignments fully
+  contained in intergenic regions.
+
+These data appear to come from an unstranded library, but if they would be
+stranded, a fourth diagnostic plot would appear showing an estimated value of
+the strandedness of each sample as function of the percentage of intergenic
+alignments. In stranded RNA-seq data, we should expect strandedness values close
+to 1, which imply that most reads align to the same strand than the annotated
+transcripts. Lower strandedness values can be indicative of gDNA contamination
+because reads sequenced from DNA are expected to align in equal proportions to
+both strands.
+
+Because **intergenic** (IGC) alignments mainly originate from gDNA contamination,
+we may expect a negative correlation between the percentage of SCJ or SCE
+alignments and the percentage of IGC alignments. On the other hand, INT
+alignments may originate either from primary unprocessed transcripts in the
+nucleous, or from gDNA contamination as well. Therefore, we may also expect some
+positive correlation between the percentages of INT and IGC alignments, as it
+happens in this data.
+
+Using the function `getDx()` on the `gDNAx` object, we obtain all the values
+used in the diagnostics.
 
 ```{r}
-## strandM$Strandedness
+dx <- getDx(gdnax)
+dx
 ```
+
+Strandedness values are stored in the `STRAND` column and in this case are `NA`
+because the dataset is not strand-specific.
+
+## Strandedness estimation
+
+Since we have let the `gDNAdx()` function to estimate strandedness, we can
+examine those estimated values using the getter function `strandedness()` on
+the `gDNAx` object.
+
+```{r, message=FALSE}
+strandedness(gdnax)
+```
+
 As we can see, the proportion of alignments overlapping
 transcripts when `strandMode = 1L` is used ("strandMode1" column) 
 is very similar to the one when `strandMode = 2L` is considered
@@ -124,58 +189,10 @@ unless the number of these kind of alignments in the BAM file is lower.
 In this vignette, the number of alignments used is close to 60,000, which is
 the total number of exonic alignments present in the BAM files.
 
-## Calculating and plotting diagnostics
+If we are only interested in the estimation of strandedness values, we can
+can also call `strandedness()` with a character string vector of BAM filenames
+and a `TxDb` annotation object; see help page of `strandedness()`.
 
-Once the `strandMode` is known, we can calculate gDNA contamination diagnostics
-using the `gDNAdx()` function. A subset of the alignments present in the BAM
-file are considered to obtain these diagnostics. The number of alignments used
-is set by the `yieldSize` parameter.
-
-```{r, message=FALSE}
-## gdnax <- gDNAdx(bamfiles, txdb, singleEnd=FALSE, strandMode=strandM$strandMode)
-gdnax <- gDNAdx(bamfiles, txdb)
-gdnax
-```
-
-We, then, can get statistics on the origin of alignments and strandedness with
-`getDx()`:
-```{r}
-dx <- getDx(gdnax)
-dx
-```
-
-Next, we can plot the previous gDNA diagnostic measures using the default
-`plot()` function. This creates four plots, each one representing a diagnostic
-measure as a function of the percentage of intergenic alignments, which can
-be considered the most informative measure regarding gDNA contamination levels.
-Here, strandedness values (STRAND column) are `NA` since the dataset is not
-strand-specific.
-
-```{r defdiag, height=10, width=10, out.width="800px", fig.cap="Default diagnostics."}
-plot(gdnax, group=pdat$gDNA, pch=19)
-```
-
-**Splice-compatible junction** (SCJ) alignments (spliced alignments overlapping 
-a transcript in a "splice compatible" way) and **splice compatible exonic**
-(SCE) alignments (alignments without a splice site, but that overlap a 
-transcript in a "splice compatible" way) are expected to come from RNA 
-sequenced reads. Instead, **intergenic** alignments (IGC) mainly come from DNA 
-sequenced reads. For this reason, we see a negative correlation between the
-percentage of SCJ or SCE alignments and the percentage of IGC alignments:
-higher gDNA contamination levels lead to more IGC alignments and less
-SCJ or SCE alignments.
-
-On the contrary, **intronic** (INT) alignments are positively correlated with
-IGC alignments and, thus, with gDNA contamination levels.
-
-The last plot shows the strandedness value. In stranded RNA-seq
-protocols, we expect a  strandedness value close to 1, meaning that
-most reads align to the same strand than the annotated transcripts. Lower
-strandedness values can be indicative of gDNA contamination: reads sequenced
-from DNA are expected to align in equal proportions to both strands.
-Therefore, a low strandedness in a stranded RNA-seq experiment can be due to
-the presence of DNA reads (contamination) mapping to transcripts but in the
-opposite strand.
 
 Another plot to represent diagnostic measures is the one representing the 
 origin of alignments per sample. Fluctuations in this proportions

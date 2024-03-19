@@ -296,6 +296,6 @@ setMethod("allStrandModes", "gDNAx",
 #' @aliases strandedness,gDNAx-method
 #' @rdname gDNAx-class
 setMethod("strandedness", "gDNAx",
-          function(x) x@strandedness
+          function(x, ...) x@strandedness
          )
 
