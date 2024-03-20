@@ -51,6 +51,9 @@ the strand of a pair of read alignments should be inferred from the strand
 of the first and last alignments in the pair. See the
 \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
 class for further detail.}
+
+\item{...}{Further arguments when \code{x} is not a \linkS4class{gDNAx}
+object.}
 }
 \value{
 \code{features()}: A \code{GRanges} object with intergenic ranges.

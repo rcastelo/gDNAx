@@ -287,6 +287,8 @@ setMethod("allStrandModes", "gDNAx",
          )
 
 #' @param x A \linkS4class{gDNAx} object.
+#' @param ... Further arguments when \code{x} is not a \linkS4class{gDNAx}
+#' object.
 #'
 #' @examples
 #' strandedness(gdnax)

@@ -110,12 +110,14 @@ identifyStrandMode <- function(bfl, txdb, singleEnd, stdChrom=TRUE,
     .Deprecated("strandedness")
     strness <- strandedness(bfl, txdb, singleEnd, stdChrom, exonsBy, minnaln,
                             verbose, BPPARAM)
-    sm <- .classifyStrandMode(strness, warnweakstr=TRUE)
+    sm <- classifyStrandMode(strness, warnweakstr=TRUE)
 
     strbysmtype <- list("strandMode"=sm, "Strandedness"=strness)
     strbysmtype
 }
 
+#' @param x A character string vector of BAM filenames.
+#'
 #' @importFrom BiocParallel SerialParam
 #' @export
 #' @aliases strandedness,character-method
@@ -140,6 +142,8 @@ setMethod("strandedness", "character",
                            verbose, BPPARAM)
           })
 
+#' @param x A \linkS4class{BamFileList} object.
+#'
 #' @importFrom BiocParallel SerialParam
 #' @export
 #' @aliases strandedness,BamFileList-method
@@ -166,6 +170,53 @@ setMethod("strandedness", "BamFileList",
 
               strness
           })
+
+## private function .estimateStrandedness() it assumes that .checkBamFiles(),
+## .checkYieldSize(), .checkPairedEnd() and .checkBamFileListArgs() have
+## been called before
+#' @importFrom methods is
+#' @importFrom Rsamtools scanBamFlag ScanBamParam
+#' @importFrom BiocParallel bpnworkers
+#' @importFrom cli cli_progress_bar cli_progress_done
+.estimateStrandedness <- function(bfl, txdb, singleEnd, stdChrom, exonsBy,
+                                  minnaln, verbose,
+                                  BPPARAM=SerialParam(progressbar=verbose)) {
+    stopifnot(is(bfl, "BamFileList")) ## QC
+
+    if (is.character(txdb))
+        txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
+                                             verbose=verbose)
+
+    annot <- exonsBy(txdb, by=exonsBy)
+    if (stdChrom) {
+        annot <- keepStandardChromosomes(annot, pruning.mode="fine")
+        annot <- annot[lengths(annot) > 0]
+    }
+    sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
+                           isProperPair=!singleEnd,
+                           isSecondaryAlignment=FALSE,
+                           isNotPassingQualityControls=FALSE)
+    param <- ScanBamParam(flag=sbflags)
+
+    if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
+        verbose <- FALSE
+        strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
+                            singleEnd=singleEnd, strandMode=1L, param=param,
+                            minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
+    } else {
+        if (verbose)
+            idpb <- cli_progress_bar("Estimating strandedness", total=length(bfl))
+        strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
+                          singleEnd=singleEnd, strandMode=1L, param=param,
+                          minnaln=minnaln, verbose=verbose, idpb=idpb)
+        if (verbose)
+            cli_progress_done(idpb)
+    }
+    names(strbysm) <- gsub(pattern = ".bam", "", names(strbysm), fixed = TRUE)
+    strbysm <- do.call("rbind", strbysm)
+    .checkMinNaln(strbysm, minnaln)
+    as.data.frame(strbysm)
+}
 
 ## Private function to get strandedness from BAM file
 #
@@ -205,7 +256,7 @@ setMethod("strandedness", "BamFileList",
             break
         
         gal <- .matchSeqinfo(gal, tx, verbose)
-        nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE)
+        nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE, verbose)
         nalnbystr <- nalnbf + nalnbystr
         naln <- nalnbystr["Nalignments"]
         i <- i + 1
@@ -236,7 +287,8 @@ setMethod("strandedness", "BamFileList",
 #' @importFrom S4Vectors queryHits
 #' @importFrom GenomicAlignments invertStrand strandMode
 #' @importFrom GenomicRanges GRanges
-.getStrandedness <- function(gal, tx, reportAll=FALSE) {
+#' @importFrom cli cli_alert_danger
+.getStrandedness <- function(gal, tx, reportAll=FALSE, verbose) {
     if (reportAll & is(gal, "GAlignmentPairs")) 
         if (strandMode(gal) != 1L)
             stop("strandMode of 'gal' must be 1L when ",
@@ -264,11 +316,10 @@ setMethod("strandedness", "BamFileList",
     nalnisst <- sum(!queryHits(ovtxisaln) %in% ambaln)
     
     ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
-    if (ambig > 0.10) {
-        wstr <- paste("The proportion of alignments mapping to regions with",
-                "transcripts annotated to both strands is %.2f, this",
-                "can cause strandedness value to be low.", sep="\n")
-        warning(sprintf(wstr, ambig))
+    if (ambig > 0.10 && verbose) {
+        wstr <- paste("> 10% of alignments (%.1f%%) mapping to regions with",
+                      "transcripts annotated to both strands")
+        cli_alert_danger(sprintf(wstr, 100*ambig))
     }
     
     if (reportAll) {
@@ -283,44 +334,67 @@ setMethod("strandedness", "BamFileList",
     }
 }
 
-## Private function to decide strandMode based on .getStrandedness() output
-.decideStrandMode <- function(strbysm) {
-    sm <- rep("ambiguous", nrow(strbysm))
-    sm[strbysm[,"strandMode1"] > 0.9] <- 1L
-    sm[strbysm[,"strandMode2"] > 0.9] <- 2L
-    unkn <- strbysm[,"strandMode1"] > 0.40 & strbysm[,"strandMode1"] < 0.60 &
-        strbysm[,"strandMode2"] > 0.40 & strbysm[,"strandMode2"] < 0.60
-    sm[unkn] <- NA
-    # sm[strbysm[,"ambig"] > 0.15] <- "highAmbiguous"
-    
-    names(sm) <- rownames(strbysm)
-    if (length(unique(sm)) == 1)
-        sm <- unique(sm)
-    
-    if (!any(sm == "ambiguous" | is.na(sm)))
-        sm <- as.integer(sm)
-    
-    sm
-}
+#' Classify strandedness values into strand modes
+#'
+#' Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
+#' Given strandedness values calculated assuming either the same or the opposite
+#' strand of gene annotations, classify them into an strand mode according to
+#' cutoff values specified in the parameters.
+#'
+#' @param strnessdat A \code{data.frame} object obtained with the function
+#' \code{\link{strandedness}()}.
+#'
+#' @param strcutoff (Default 0.9) Minimum cutoff above which a strandedness
+#' value is considered to strongly support that read alignments originate from
+#' a specific strand.
+#'
+#' @param weakstrcutoff (Default 0.6) Minimum cutoff above which a strandedness
+#' value is considered to weakly support that read alignments originate from a
+#' specific strand.
+#'
+#' @param warnweakstr (Default TRUE) Logical value indicating whether to warn
+#' the user when strandedness values only provide a weakly support for a
+#' specific strand.
+#'
+#' @return A vector of integer values, \code{NA}, \code{1}, or \code{2},
+#'
+#' @examples
+#'
+#' strnessdat <- data.frame(strandMode1=c(0.91, 0.92, 0.93),
+#'                          strandMode2=c(0.09, 0.08, 0.07))
+#' classifyStrandMode(strnessdat)
+#'
+#' @importFrom cli cli_alert_danger
+#' @export
+#' @rdname strandedness
 
-.classifyStrandMode <- function(strbysm, strcutoff=0.9, weakstrcutoff=0.6,
-                                warnweakstr=FALSE) {
-    sm <- rep(NA, nrow(strbysm))
-    sm[strbysm[, "strandMode1"] >= strcutoff] <- 1L
-    sm[strbysm[, "strandMode2"] >= strcutoff] <- 2L
-    weakstrmask <- (strbysm[, "strandMode1"] >= weakstrcutoff &
-                    strbysm[, "strandMode1"] < strcutoff) |
-                   (strbysm[, "strandMode2"] >= weakstrcutoff &
-                    strbysm[, "strandMode2"] < strcutoff)
+classifyStrandMode <- function(strnessdat, strcutoff=0.9, weakstrcutoff=0.6,
+                               warnweakstr=TRUE) {
+    if (!is.data.frame(strnessdat) ||
+        any(!c("strandMode1", "strandMode2") %in% colnames(strnessdat)))
+        stop("argument 'strnessdat' should be a 'data.frame' object with",
+             "  two columns called 'strandMode1' and 'strandMode2'")
+    if (!is.numeric(strnessdat$strandMode1) ||
+        !is.numeric(strnessdat$strandMode2) ||
+        any(strnessdat$strandMode1 < 0) || any(strnessdat$strandMode1 > 1) ||
+        any(strnessdat$strandMode2 < 0) || any(strnessdat$strandMode2 > 1))
+        stop("columns 'strandMode1' and 'strandMode2' in argument 'strnessdat'",
+             "  should contain numeric values between 0 and 1")
+
+    sm <- rep(NA, nrow(strnessdat))
+    sm[strnessdat[, "strandMode1"] >= strcutoff] <- 1L
+    sm[strnessdat[, "strandMode2"] >= strcutoff] <- 2L
+    weakstrmask <- (strnessdat[, "strandMode1"] >= weakstrcutoff &
+                    strnessdat[, "strandMode1"] < strcutoff) |
+                   (strnessdat[, "strandMode2"] >= weakstrcutoff &
+                    strnessdat[, "strandMode2"] < strcutoff)
     if (any(weakstrmask) && warnweakstr) {
-      wstr <- paste("%d BAM files show strandedness values in the interval",
-                    "  [%.1f, %.1f). Run and/or look at the output of",
-                    "  'identifyStrandMode()' to obtain full details on",
-                    "  these values.", sep="\n")
-      warning(sprintf(wstr, sum(weakstrmask), weakstrcutoff, strcutoff))
+      wstr <- paste("%d BAM files show weak strandedness values [%.1f, %.1f)")
+      cli_alert_danger(sprintf(wstr, sum(weakstrmask), weakstrcutoff, strcutoff))
     }
-    sm[strbysm[, "strandMode1"] >= weakstrcutoff] <- 1L
-    sm[strbysm[, "strandMode2"] >= weakstrcutoff] <- 2L
+    sm[strnessdat[, "strandMode1"] >= weakstrcutoff] <- 1L
+    sm[strnessdat[, "strandMode2"] >= weakstrcutoff] <- 2L
+    names(sm) <- rownames(strnessdat)
     sm
 }
 

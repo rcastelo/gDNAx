@@ -125,7 +125,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         strness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
                                          exonsBy, minnaln, verbose,
                                          BPPARAM)
-        allStrandModes <- .classifyStrandMode(strness)
+        allStrandModes <- classifyStrandMode(strness, warnweakstr=FALSE)
         smtab <- table(allStrandModes, useNA="always")
         strandMode <- as.integer(names(which.max(smtab)))
         if (verbose) {
@@ -244,7 +244,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     intaln$intmask[whint] <- FALSE
 
     dx_oneBAM <- .getdx_oneBAM(igcaln, intaln, scoaln, singleEnd,
-                                strandMode, gal, tx, naln)
+                               strandMode, gal, tx, naln, verbose)
     if (verbose)
       cli_progress_update(id=idpb)
 
@@ -253,12 +253,12 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 
 ## private function .getdx_oneBAM() 
 .getdx_oneBAM <- function(igcaln, intaln, scoaln, singleEnd, strandMode,
-                          gal, tx, naln) {
+                          gal, tx, naln, verbose) {
     nigcaln <- sum(igcaln$igcmask)
     nintaln <- sum(intaln$intmask)
     nscjaln <- sum(scoaln$scjmask)
     nscealn <- sum(scoaln$scemask)
-    nsccaln <- sum(scoaln$sccmask)
+    njncaln <- sum(scoaln$jncmask)
     
     igcfrglen <- intfrglen <- scjfrglen <- scefrglen <- NA_integer_
     if (!singleEnd) { ## fragments length from paired-end reads
@@ -272,10 +272,10 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     if (is.na(strandMode))
         strness <- NA
     else
-        strness <- .getStrandedness(gal, tx, reportAll=FALSE)
+        strness <- .getStrandedness(gal, tx, reportAll=FALSE, verbose)
     
     return(list(naln=naln, nigcaln=nigcaln, nintaln=nintaln, nscjaln=nscjaln,
-                nscealn=nscealn, nsccaln=nsccaln, igcfrglen=igcfrglen,
+                nscealn=nscealn, njncaln=njncaln, igcfrglen=igcfrglen,
                 intfrglen=intfrglen, scjfrglen=scjfrglen, scefrglen=scefrglen,
                 strness=strness))
 }
@@ -364,8 +364,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     ovscetx <- ovscetx[mask]
     scemask <- countQueryHits(ovscetx) > 0
     
-    res <- list(scjmask=scjmask, scemask=scemask,
-                sccmask=sum(njunc(gal) > 0))
+    res <- list(scjmask=scjmask, scemask=scemask, jncmask=sum(njunc(gal) > 0))
     res <- .getfrglen(singleEnd, fragmentsLen, res, gal, tx, ovscjtx, ovscetx, 
                       strandMode, nfrgs)
     res
@@ -527,8 +526,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         100 * x$nscjaln / x$naln, FUN.VALUE = numeric(1L))
     scepct <- vapply(dxBAMs, function(x)  ## splice-compatible exonic %
         100 * x$nscealn / x$naln, FUN.VALUE = numeric(1L))
-    sccpct <- vapply(dxBAMs, function(x)  ## njunc() splice-compatible junction %
-        100 * x$nsccaln / x$naln, FUN.VALUE = numeric(1L))
+    jncpct <- vapply(dxBAMs, function(x)  ## njunc() splice-compatible junction %
+        100 * x$njncaln / x$naln, FUN.VALUE = numeric(1L))
     igcfrglen.mean <- vapply(dxBAMs, function(x) mean(x$igcfrglen),
                                 FUN.VALUE = numeric(1L))
     intfrglen.mean <- vapply(dxBAMs, function(x) mean(x$intfrglen),
@@ -543,7 +542,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         stopifnot(identical(names(bfl),  names(igcpct)))
         snames <- path(bfl)
     }
-    dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct, SCC=sccpct,
+    dx <- data.frame(IGC=igcpct, INT=intpct, SCJ=scjpct, SCE=scepct, JNC=jncpct,
                      IGCFLM=igcfrglen.mean, SCJFLM=scjfrglen.mean,
                      SCEFLM=scefrglen.mean, INTFLM=intfrglen.mean,
                      STRAND=strness, row.names=snames)

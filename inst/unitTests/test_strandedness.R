@@ -66,23 +66,19 @@ test_output_identifyStrandMode <- function() {
 
 test_decideStrandMode <- function() {
 
-    ## ambiguous
-    strbysm <- data.frame("strandMode1" = 0.3, "strandMode2" = 0.65,
-                            "ambig" = 0.05)
-    checkIdentical(gDNAx:::.decideStrandMode(strbysm), "ambiguous")
+    ## unstranded: NA
+    strbysm <- data.frame("strandMode1" = 0.3, "strandMode2" = 0.45,
+                          "ambig" = 0.25)
+    checkTrue(is.na(gDNAx::classifyStrandMode(strbysm)))
     
     ## strandMode2
     strbysm <- data.frame("strandMode1" = 0.01, "strandMode2" = 0.94,
                           "ambig" = 0.05)
-    checkIdentical(gDNAx:::.decideStrandMode(strbysm), 2L)
+    checkIdentical(as.integer(gDNAx::classifyStrandMode(strbysm)), 2L)
     
     ## strandMode1
     strbysm <- data.frame("strandMode1" = 0.91, "strandMode2" = 0.08,
                           "ambig" = 0.01)
-    checkIdentical(gDNAx:::.decideStrandMode(strbysm), 1L)
+    checkIdentical(as.integer(gDNAx::classifyStrandMode(strbysm)), 1L)
     
-    ## unstranded: NA
-    strbysm <- data.frame("strandMode1" = 0.55, "strandMode2" = 0.42,
-                          "ambig" = 0.02)
-    checkTrue(is.na(gDNAx:::.decideStrandMode(strbysm)))
 }

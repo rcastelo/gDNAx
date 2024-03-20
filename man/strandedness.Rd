@@ -4,6 +4,7 @@
 \alias{identifyStrandMode}
 \alias{strandedness,character-method}
 \alias{strandedness,BamFileList-method}
+\alias{classifyStrandMode}
 \alias{strnessByFeature}
 \title{Identify strandMode}
 \usage{
@@ -38,6 +39,13 @@ identifyStrandMode(
   minnaln = 2e+05,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
+)
+
+classifyStrandMode(
+  strnessdat,
+  strcutoff = 0.9,
+  weakstrcutoff = 0.6,
+  warnweakstr = TRUE
 )
 
 strnessByFeature(
@@ -90,6 +98,23 @@ to configure the parallel execution of the code. By default, a
 parallelization, with the flag \code{progress=TRUE} to show progress
 through the calculations.}
 
+\item{x}{A \linkS4class{BamFileList} object.}
+
+\item{strnessdat}{A \code{data.frame} object obtained with the function
+\code{\link{strandedness}()}.}
+
+\item{strcutoff}{(Default 0.9) Minimum cutoff above which a strandedness
+value is considered to strongly support that read alignments originate from
+a specific strand.}
+
+\item{weakstrcutoff}{(Default 0.6) Minimum cutoff above which a strandedness
+value is considered to weakly support that read alignments originate from a
+specific strand.}
+
+\item{warnweakstr}{(Default TRUE) Logical value indicating whether to warn
+the user when strandedness values only provide a weakly support for a
+specific strand.}
+
 \item{features}{A \code{GRanges} or \code{GRangesList} object with
 annotations of features (e.g. genes, transcripts, etc.).}
 
@@ -136,6 +161,8 @@ A \link[base:list]{list} object with two elements:
         aligned to regions with transcripts in both strands.
 }
 
+A vector of integer values, \code{NA}, \code{1}, or \code{2},
+
 A \linkS4class{SummarizedExperiment} with three assays:
 \itemize{
   \item "strness": contains strandedness values for each feature and sample.
@@ -148,6 +175,11 @@ A \linkS4class{SummarizedExperiment} with three assays:
 \description{
 THIS FUNCTION HAS BEEN DEPRECATED, HAS BEEN REPLACED BY \code{strandedness()}
 AND WILL WILL BE DEFUNCT AT THE NEXT RELEASE.
+
+Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
+Given strandedness values calculated assuming either the same or the opposite
+strand of gene annotations, classify them into an strand mode according to
+cutoff values specified in the parameters.
 
 Compute strandedness for each feature in RNA-seq data samples based on
 the proportion of reads aligning to the same strand as feature annotations
@@ -198,6 +230,11 @@ bamfiles <- bamfiles[c(1,7)] # using a subset of samples
 strandM <- identifyStrandMode(bamfiles, txdb, singleEnd=FALSE)
 strandM$strandMode
 head(strandM$Strandedness)
+
+
+strnessdat <- data.frame(strandMode1=c(0.91, 0.92, 0.93),
+                         strandMode2=c(0.09, 0.08, 0.07))
+classifyStrandMode(strnessdat)
 
 features <- range(exonsBy(txdb, by="gene"))
 features <- features[1:100]
