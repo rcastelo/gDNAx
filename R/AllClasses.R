@@ -1,7 +1,6 @@
 #' gDNAx class
 #'
-#' This is a class for storing the results of a call to the
-#' 'gDNAdx()' function.
+#' This is a class for storing the results of a call to the 'gDNAdx()' function.
 #'
 #' @slot bfl A \linkS4class{BamFileList} object.
 #'
@@ -177,7 +176,7 @@ setMethod("show", "gDNAx",
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
-#' @return \code{features()}: A \code{GRanges} object with intergenic ranges.
+#' @return \code{getIgc()}: A \code{GRanges} object with intergenic ranges.
 #' 
 #' @examples
 #' igc <- getIgc(gdnax)
@@ -195,7 +194,7 @@ setMethod("getIgc", "gDNAx",
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
-#' @return \code{features()}: A \code{GRanges} object with intron ranges.
+#' @return \code{getInt()}: A \code{GRanges} object with intron ranges.
 #' 
 #' @examples
 #' int <- getInt(gdnax)
@@ -213,6 +212,10 @@ setMethod("getInt", "gDNAx",
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
+#' @return \code{singleEnd()}: Logical value indicating whether the
+#' \code{\linkS4class{gDNAx}} object contains data from a single-end
+#' (\code{TRUE}) or a paired-end (\code{FALSE}) RNA-seq experiment.
+#'
 #' @examples
 #' singleEnd(gdnax)
 #' 
@@ -225,6 +228,12 @@ setMethod("singleEnd", "gDNAx",
          )
 
 #' @param x A \linkS4class{gDNAx} object.
+#'
+#' @return \code{strandMode()}: Integer value indicating whether the
+#' \code{\linkS4class{gDNAx}} object contains data from an unstranded
+#' (\code{NA}), stranded with the first mate read indicating the real
+#' strand (\code{1}), or stranded with the last mate read indicating
+#' the real strand (\code{2}) from an RNA-seq experiment.
 #'
 #' @examples
 #' strandMode(gdnax)
@@ -275,6 +284,9 @@ setReplaceMethod("strandMode", "gDNAx",
 
 #' @param x A \linkS4class{gDNAx} object.
 #'
+#' @return Vector of strand modes for each BAM file in the
+#' \linkS4class{gDNAx} object.
+#'
 #' @examples
 #' allStrandModes(gdnax)
 #' 
@@ -288,7 +300,10 @@ setMethod("allStrandModes", "gDNAx",
 
 #' @param x A \linkS4class{gDNAx} object.
 #' @param ... Further arguments when \code{x} is not a \linkS4class{gDNAx}
-#' object.
+#' object; see the help page of \code{\link{gDNAdx}()}.
+#'
+#' @return A \code{data.frame} object with strandedness values for each
+#' BAM file in the \linkS4class{gDNAx} object.
 #'
 #' @examples
 #' strandedness(gdnax)

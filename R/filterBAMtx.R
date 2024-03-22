@@ -65,7 +65,8 @@
 #' @importFrom Rsamtools bamWhat bamWhat<-
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes
-#' @importFrom BiocParallel SerialParam bplapply bpnworkers
+#' @importFrom BiocParallel SerialParam bplapply bpnworkers multicoreWorkers
+#' @importFrom cli cli_alert_danger cli_alert_warning cli_progress_bar cli_progress_done
 #' @export
 #' @rdname filterBAMtx
 filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
@@ -85,10 +86,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (txflag == 0)
         stop("No alignment type selected in argument 'txflag'. Please use ",
              "the function 'filterBAMtxFlag()' to select at least one.")
-    if (testBAMtxFlag(txflag, "isInStrandedWindow") && is.na(strandMode))
-      warning(" Filtering with 'isInStrandedWindow=TRUE' is only helpful\n   ",
-              "with stranded RNA-seq data and the input data is apparently\n   ",
-              "unstranded (strandMode='NA').")
+    if (testBAMtxFlag(txflag, "isInStrandedWindow") && is.na(strandMode) && verbose)
+        cli_alert_danger("Data is unstranded, filtering with stranded windows will not help.")
 
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- lapply(bfl, function(x, ys) {
@@ -105,8 +104,15 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         what0 <- c(what0, "flag", "groupid", "mate_status")
     }
     param <- GenomicAlignments:::.normargParam(param, flag0, what0)
+
     if (verbose)
-        message("Start processing BAM file(s)")
+        cli_alert_info(sprintf("gDNAx object for %d BAM files", length(bfl)))
+    if (verbose && length(bfl) > 10 && bpnworkers(BPPARAM) == 1 &&
+        multicoreWorkers() > 1) {
+        fmtstr <- "%d BAM files, consider setting the 'BPPARAM' argument."
+        cli_alert_warning(sprintf(fmtstr, length(bfl)))
+    }
+
     out.st <- NULL
     if (length(bfl) > 1 && bpnworkers(BPPARAM) > 1) {
         verbose <- FALSE
@@ -116,23 +122,33 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                            tx2gene=tx2gene, param=param, wsize=wsize,
                            wstep=wstep, pstrness=pstrness, p.value=p.value,
                            verbose=verbose, BPPARAM=BPPARAM)
-    } else
+    } else {
+      idpb <- NULL
+      if (verbose)
+          idpb <- cli_progress_bar("Filtering", total=length(bfl))
       out.st <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int,tx=tx,path=path,
                        txflag=txflag, singleEnd=singleEnd,
                        strandMode=strandMode, stdChrom=stdChrom,
                        tx2gene=tx2gene, param=param, wsize=wsize, wstep=wstep,
-                       pstrness=pstrness, p.value=p.value, verbose=verbose)
+                       pstrness=pstrness, p.value=p.value, verbose=verbose,
+                       idpb=idpb)
+      if (verbose)
+          cli_progress_done(idpb)
+    }
 
     out.st <- data.frame(do.call("rbind", out.st))
+    rownames(out.st) <- gsub(".bam", "", rownames(out.st))
+
     out.st
 }
 
 #' @importFrom BiocGenerics basename path
 #' @importFrom S4Vectors FilterRules
 #' @importFrom Rsamtools filterBam sortBam indexBam
+#' @importFrom cli cli_progress_update
 .filter_oneBAMtx <- function(bf, igc, int, tx, path, txflag, singleEnd,
                              strandMode, stdChrom, tx2gene, param, wsize, wstep,
-                             pstrness, p.value, verbose) {
+                             pstrness, p.value, verbose, idpb) {
 
     onesuffix <- c(isIntergenic="IGC",
                    isIntronic="INT",
@@ -150,11 +166,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         paste0(gsub(".bam", "", basename(path(bf))), suffix))
     statsenvname <- sprintf("stats_%s", gsub(".bam", "", basename(path(bf))))
     assign(statsenvname, new.env())
-    assign("stats", c(NALN=0L, NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L),
-           envir=get(statsenvname))
+    assign("stats", c(NALN=0L, NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L,
+                      NNCH=0L), envir=get(statsenvname))
 
-    if (verbose)
-        message(sprintf("Processing %s", basename(path(bf))))
     filter <- FilterRules(list(BAMtx=.bamtx_filter))
     ff <- filterBam(bf, bamoutfile, param=param, filter=filter,
                     indexDestination=FALSE)
@@ -174,6 +188,10 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     for (flag in TXFLAG_BITNAMES)
         if (!testBAMtxFlag(txflag, flag))
             stats[paste0("N", onesuffix[flag])] <- NA_integer_
+
+    if (verbose)
+        cli_progress_update(id=idpb)
+
     stats
 }
 
@@ -218,32 +236,27 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     mcols(gal) <- dtf
     if (!singleEnd)
         gal <- .makeGALPE(param, strandMode, gal)
+    envstats <- get("stats", envir=statsenv)
     if (stdChrom) {
         ngal <- length(gal)
         if (singleEnd)
             gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
         else
             gal <- keepStandardChromosomes(gal, pruning.mode="fine")
-        if (length(gal) < ngal && verbose)
-          message(sprintf("Discarding %d alignments in non-standard chromosomes.",
-                          ngal-length(gal)))
-        if (length(gal) == 0) ## if all alignments are in non-standard chromosomes
+        if (length(gal) < ngal)
+          envstats["NNCH"] <- envstats["NNCH"] + ngal - length(gal)
+        if (length(gal) == 0) { ## if all alignments are in non-standard chromosomes
+          assign("stats", envstats, envir=statsenv)
           return(rep(FALSE, nrow(x)))
+        }
     }
     
     gal <- .matchSeqinfo(gal, tx, verbose)
     
     alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx, tx2gene,
                            singleEnd, wsize, wstep, pstrness, p.value)
-    envstats <- get("stats", envir=statsenv)
     envstats <- envstats + alntype$stats
     assign("stats", envstats, envir=statsenv)
-    if (verbose) {
-        messwhalnstr <- paste(alntype$whalnstr, collapse=", ")
-        message(sprintf("%d alignments processed, %d (%.2f%%) %s written",
-                        envstats["NALN"], sum(envstats[-1]),
-                        100*sum(envstats[-1])/envstats["NALN"], messwhalnstr))
-    }
     
     mask <- rep(FALSE, nrow(x))
     if (any(alntype$mask)) {
@@ -297,7 +310,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         singleEnd, wsize, wstep, pstrness, p.value) {
 
     whalnstr <- character(0)
-    stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L)
+    stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L,
+               NNCH=0L)
     if (length(gal) == 0)
       return(list(mask=logical(0), whalnstr=whalnstr, stats=stats))
 

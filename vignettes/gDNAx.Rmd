@@ -48,7 +48,7 @@ this reason, it is important to check the levels of gDNA contamination during
 quality control before performing further analyses, specially when total RNA
 has been sequenced.
 
-# Diagnose the presence of gDNA contamination
+# Diagnose gDNA contamination
 
 Here we illustrate the use of the [gDNAx](https://bioconductor.org/packages/gDNAx)
 package for producing different diagnostics and how do they reveal different
@@ -229,7 +229,7 @@ compatible with an unstranded library and the reason why we obtain `NA` values
 in the output of `classifyStrandMode()`. We reach the same conclusion if we use
 the RSeQC tool `infer_experiment.py` [@wang2012rseqc] and by visual inspection
 of the alignment data in the Integrative Genomics Viewer (IGV)
-([@robinson2011integrative]).
+[@robinson2011integrative].
 
 Following the recommendations made by @signal2022how_are_we_stranded_here,
 `gDNAx` attempts to use at least 200,000 alignments overlapping exonic regions
@@ -239,38 +239,43 @@ the total number of exonic alignments present in the BAM files.
 
 If we are only interested in the estimation of strandedness values, we can
 can also directly call `strandedness()` with a character string vector of BAM
-filenames and a `TxDb` annotation object; see help page of `strandedness()`.
+filenames and a `TxDb` annotation object; see the help page of `strandedness()`.
 
-# Filter alignments according to an annotation
+# Remove gDNA contamination
 
-The package also provides functions to filter splice-compatible alignments
-and write them into new BAM files. To do so, first we set the type
-of alignments to be included in the BAM file using `filterBAMtxFlag()`, and
-then we call the `filterBAMtx()` function. For instance, to keep only reads
-expected to come from RNA, we can set `isSpliceCompatibleJunction` and
-`isSpliceCompatibleExonic` to `TRUE`. The resulting BAM files, which are
-located in the directory indicated in the `path` argument, are
-useful for performing downstream analyses, such as differential expression
-analysis, without the effect of gDNA contamination.
+We can attempt removing read alignments from putative gDNA origin using the
+function `gDNAtx()`, which should be called with the `gDNAx` object returned
+by `gDNAdx()` and a path in the filesystem where to stored the filtered
+BAM files. By default, these filtered BAM files include splice-compatible
+read alignments (SCJ and SCE) that are found in a genomic window enriched for
+stranded alignments. For further fine tuning of this filtering strategy please
+use the function `filterBAMtx()`.
 
 ```{r, eval=FALSE}
-fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
-                       isSpliceCompatibleExonic=TRUE)
+## fbf <- filterBAMtxFlag(isSpliceCompatibleJunction=TRUE,
+##                        isSpliceCompatibleExonic=TRUE)
+## fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
+## fstats
 tmpdir <- tempdir()
-fstats <- filterBAMtx(gdnax, path=tmpdir, txflag=fbf)
-# list.files(tmpdir, pattern="*.bam$")
+fstats <- gDNAtx(gdnax, path=tmpdir)
 fstats
 ```
 
 ```{r, echo=FALSE}
 fstats_f <- file.path(system.file("extdata", package="gDNAx"),
-                      "filterBAMtx_fstats.rds")
+                      "cached_gDNAtx_fstats.rds")
 fstats <- readRDS(fstats_f)
 fstats
 ```
 
-We can see the number of alignments in each of the selected categories, and
-`NA` for those for which we did not retrieve any alignment.
+The first column `NALN` corresponds to the total number of read alignments
+processed. Columns `NIGC` to `NSCE` contain the number of selected alignments
+from each corresponding origin, where `NA` indicates that that type of
+alignment was not selected for filtering. The column `NSTW` corresponds to
+selected alignments occurring in stranded windows, and therefore this number
+will be always equal or smaller than the number of the previous columns. The
+column `NNCH` corresponds to discarded read alignments ocurring in non-standard
+chromosomes.
 
 # Session information
 

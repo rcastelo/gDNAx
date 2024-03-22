@@ -112,6 +112,12 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     if (!singleEnd)
       maxfrglen <- 2 * max(rlens)
 
+    if (verbose && length(bfl) > 10 && bpnworkers(BPPARAM) == 1 &&
+        multicoreWorkers() > 1) {
+        fmtstr <- "%d BAM files, consider setting the 'BPPARAM' argument."
+        cli_alert_warning(sprintf(fmtstr, length(bfl)))
+    }
+
     allStrandModes <- integer(0)
     strness <- matrix(numeric(0), nrow=0, ncol=4,
                       dimnames=list(character(0),
@@ -171,8 +177,9 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
                            strandMode=strandMode, param=param,
                            verbose=verbose, BPPARAM=BPPARAM)
     } else {
+        idpb <- NULL
         if (verbose)
-            idpb <- cli_progress_bar("Calculating diagnostics", total=length(bfl))
+            idpb <- cli_progress_bar("Diagnosing", total=length(bfl))
         dxBAMs <- lapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                          int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                          stdChrom=stdChrom, singleEnd=singleEnd,
@@ -200,6 +207,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom GenomicAlignments encodeOverlaps isCompatibleWithSplicing
 #' @importFrom GenomicAlignments isCompatibleWithSkippedExons granges
 #' @importFrom GenomicRanges GRanges grglist
+#' @importFrom cli cli_progress_update
 .gDNAdx_oneBAM <- function(bf, igc, int, tx, tx2gene, stdChrom, singleEnd,
                            strandMode, param, verbose, idpb) {
     if (isOpen(bf))

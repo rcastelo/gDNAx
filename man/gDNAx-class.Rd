@@ -53,16 +53,31 @@ of the first and last alignments in the pair. See the
 class for further detail.}
 
 \item{...}{Further arguments when \code{x} is not a \linkS4class{gDNAx}
-object.}
+object; see the help page of \code{\link{gDNAdx}()}.}
 }
 \value{
-\code{features()}: A \code{GRanges} object with intergenic ranges.
+\code{getIgc()}: A \code{GRanges} object with intergenic ranges.
 
-\code{features()}: A \code{GRanges} object with intron ranges.
+\code{getInt()}: A \code{GRanges} object with intron ranges.
+
+\code{singleEnd()}: Logical value indicating whether the
+\code{\linkS4class{gDNAx}} object contains data from a single-end
+(\code{TRUE}) or a paired-end (\code{FALSE}) RNA-seq experiment.
+
+\code{strandMode()}: Integer value indicating whether the
+\code{\linkS4class{gDNAx}} object contains data from an unstranded
+(\code{NA}), stranded with the first mate read indicating the real
+strand (\code{1}), or stranded with the last mate read indicating
+the real strand (\code{2}) from an RNA-seq experiment.
+
+Vector of strand modes for each BAM file in the
+\linkS4class{gDNAx} object.
+
+A \code{data.frame} object with strandedness values for each
+BAM file in the \linkS4class{gDNAx} object.
 }
 \description{
-This is a class for storing the results of a call to the
-'gDNAdx()' function.
+This is a class for storing the results of a call to the 'gDNAdx()' function.
 }
 \section{Slots}{
 
