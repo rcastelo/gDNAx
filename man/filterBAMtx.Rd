@@ -16,6 +16,7 @@ filterBAMtx(
   wstep = 100,
   pstrness = 0.6,
   p.value = 0.05,
+  p.adj.method = p.adjust.methods,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -54,9 +55,17 @@ may decrease the overall performance.}
 a target read alignment to occur in stranded window.}
 
 \item{p.value}{(Default 0.05) Numeric value between 0 and 1 specifying the
-corrected p-value cutoff under which we reject the null hypothesis that a
+adjusted p-value cutoff under which we reject the null hypothesis that a
 target read alignment occurs in a window with an strandedness value below
-the one given in the parameter \code{pstrness}.}
+the one given in the parameter \code{pstrness}. This parameter is only used
+when the argument \code{txflag} includes the value
+\code{isInStrandedWindow=TRUE}.}
+
+\item{p.adj.method}{(Default "holm") Method used to adjust p-values that
+are compared against the cutoff value specified in the parameter
+\code{p.value}. Adjusted p-values are calculated using the base R function
+\code{p.adjust()} and this argument is directly passed to the argument
+\code{method} of that function.}
 
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}

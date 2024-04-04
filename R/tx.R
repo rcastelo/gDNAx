@@ -1,9 +1,13 @@
 #' Remove gDNA contamination from RNA-seq data
 #'
-#' Remove gDNA contamination from RNA-seq data by filtering read alignments in BAM files
-#' that putatively have a gDNA origin.
+#' Remove gDNA contamination from RNA-seq data by filtering read alignments in
+#' BAM files that putatively have a gDNA origin. This is currently a wrapper
+#' with convenient default values for the function \code{\link{filterBAMtx}()},
+#' please use that function if you need greater control on how to filter RNA-seq
+#' alignments.
 #'
-#' @param x \linkS4class{gDNAx} object obtained with the function \code{\link{gDNAdx}()}.
+#' @param x \linkS4class{gDNAx} object obtained with the function
+#' \code{\link{gDNAdx}()}.
 #'
 #' @param path Directory where to write the filtered BAM files.
 #'

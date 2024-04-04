@@ -26,9 +26,17 @@
 #' a target read alignment to occur in stranded window.
 #'
 #' @param p.value (Default 0.05) Numeric value between 0 and 1 specifying the
-#' corrected p-value cutoff under which we reject the null hypothesis that a
+#' adjusted p-value cutoff under which we reject the null hypothesis that a
 #' target read alignment occurs in a window with an strandedness value below
-#' the one given in the parameter \code{pstrness}.
+#' the one given in the parameter \code{pstrness}. This parameter is only used
+#' when the argument \code{txflag} includes the value
+#' \code{isInStrandedWindow=TRUE}.
+#'
+#' @param p.adj.method (Default "holm") Method used to adjust p-values that
+#' are compared against the cutoff value specified in the parameter
+#' \code{p.value}. Adjusted p-values are calculated using the base R function
+#' \code{p.adjust()} and this argument is directly passed to the argument
+#' \code{method} of that function.
 #'
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
@@ -67,11 +75,13 @@
 #' @importFrom GenomeInfoDb keepStandardChromosomes
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers multicoreWorkers
 #' @importFrom cli cli_alert_danger cli_alert_warning cli_progress_bar cli_progress_done
+#' @importFrom stats p.adjust.methods
 #' @export
 #' @rdname filterBAMtx
 filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                         param=ScanBamParam(), yieldSize=1000000,
                         wsize=1000, wstep=100, pstrness=0.6, p.value=0.05,
+                        p.adj.method=p.adjust.methods,
                         verbose=TRUE, BPPARAM=SerialParam(progressbar=verbose)) {
     bfl <- object@bfl
     singleEnd <- object@singleEnd
@@ -81,13 +91,18 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     int <- object@intronic
     tx <- object@transcripts
     tx2gene <- object@tx2gene
+
     if (!file.exists(path))
         stop(sprintf("path %s does not exist.", path))
+    p.adj.method <- match.arg(p.adj.method)
+
     if (txflag == 0)
         stop("No alignment type selected in argument 'txflag'. Please use ",
              "the function 'filterBAMtxFlag()' to select at least one.")
-    if (testBAMtxFlag(txflag, "isInStrandedWindow") && is.na(strandMode) && verbose)
-        cli_alert_danger("Data is unstranded, filtering with stranded windows will not help.")
+    if (testBAMtxFlag(txflag, "isInStrandedWindow") && is.na(strandMode) &&
+        verbose) {
+        cli_alert_danger("Data is unstranded, stranded windows will not help.")
+    }
 
     yieldSize <- .checkYieldSize(yieldSize)
     bfl <- lapply(bfl, function(x, ys) {
@@ -121,6 +136,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                            strandMode=strandMode, stdChrom=stdChrom,
                            tx2gene=tx2gene, param=param, wsize=wsize,
                            wstep=wstep, pstrness=pstrness, p.value=p.value,
+                           p.adj.method=p.adjust.methods,
                            verbose=verbose, BPPARAM=BPPARAM)
     } else {
       idpb <- NULL
@@ -130,7 +146,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
                        txflag=txflag, singleEnd=singleEnd,
                        strandMode=strandMode, stdChrom=stdChrom,
                        tx2gene=tx2gene, param=param, wsize=wsize, wstep=wstep,
-                       pstrness=pstrness, p.value=p.value, verbose=verbose,
+                       pstrness=pstrness, p.value=p.value,
+                       p.adj.method=p.adjust.methods, verbose=verbose,
                        idpb=idpb)
       if (verbose)
           cli_progress_done(idpb)
@@ -148,7 +165,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom cli cli_progress_update
 .filter_oneBAMtx <- function(bf, igc, int, tx, path, txflag, singleEnd,
                              strandMode, stdChrom, tx2gene, param, wsize, wstep,
-                             pstrness, p.value, verbose, idpb) {
+                             pstrness, p.value, p.adj.method, verbose, idpb) {
 
     onesuffix <- c(isIntergenic="IGC",
                    isIntronic="INT",
@@ -200,6 +217,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom GenomeInfoDb seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
+
     n <- 5  ## this number is derived from the fact that .bamtx_filter()
             ## is called by 'eval()' within the 'filterBam()' function
             ## and allows one to access the objects in the scope of
@@ -219,8 +237,10 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     wstep <- get("wstep", envir=parent.frame(n))
     pstrness <- get("pstrness", envir=parent.frame(n))
     p.value <- get("p.value", envir=parent.frame(n))
+    p.adj.method <- get("p.adj.method", envir=parent.frame(n))
     statsenvname <- get("statsenvname", envir=parent.frame(n))
     statsenv <- get(statsenvname, envir=parent.frame(n))
+
     seqlengths <- .getSeqlen(bf, x)
     gal <- GAlignments(seqnames=x$rname, pos=x$pos, cigar=x$cigar,
                        strand=x$strand, seqlengths=seqlengths)
@@ -254,7 +274,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     gal <- .matchSeqinfo(gal, tx, verbose)
     
     alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx, tx2gene,
-                           singleEnd, wsize, wstep, pstrness, p.value)
+                           singleEnd, wsize, wstep, pstrness, p.value,
+                           p.adj.method)
     envstats <- envstats + alntype$stats
     assign("stats", envstats, envir=statsenv)
     
@@ -307,7 +328,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 ## private function .getalntype()
 .getalntype <- function(gal, txflag, igc, int, strandMode, tx, tx2gene,
-                        singleEnd, wsize, wstep, pstrness, p.value) {
+                        singleEnd, wsize, wstep, pstrness, p.value,
+                        p.adj.method) {
 
     whalnstr <- character(0)
     stats <- c(NALN=length(gal), NIGC=0L, NINT=0L, NSCJ=0L, NSCE=0L, NSTW=0L,
@@ -346,7 +368,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     }
     if (testBAMtxFlag(txflag, "isInStrandedWindow")) {
         stwmask <- .strandedWindowMask(gal, tx, singleEnd, wsize, wstep,
-                                       pstrness, p.value, tmask, imask)
+                                       pstrness, p.value, p.adj.method, tmask,
+                                       imask)
         tmask <- tmask & stwmask
         whalnstr <- c(whalnstr, "STW")
         stats["NSTW"] <- sum(stwmask) 
@@ -464,8 +487,8 @@ testBAMtxFlag <- function(flag, value) {
 #' @importFrom GenomicAlignments first last
 #' @importFrom matrixStats rowMins
 
-.strandedWindowMask <- function(gal, tx, singleEnd, wsize, wstep,
-                                pstrness, p.value, tmask, imask) {
+.strandedWindowMask <- function(gal, tx, singleEnd, wsize, wstep, pstrness,
+                                p.value, p.adj.method, tmask, imask) {
 
     if (length(gal) == 0)
       return(logical(0))
@@ -598,7 +621,7 @@ testBAMtxFlag <- function(flag, value) {
     ## and adjust them using the Bonferroni method
     p <- lapply(p, matrix, ncol=nwin, byrow=TRUE)
     p <- lapply(p, rowMins)
-    p <- lapply(p, p.adjust, method="bonferroni")
+    p <- lapply(p, p.adjust, method=p.adj.method)
 
     uniqgr$p <- unlist(p, use.names=FALSE)
 
@@ -628,6 +651,7 @@ testBAMtxFlag <- function(flag, value) {
       mask <- rep(FALSE, length(gal))
       mask[tmask] <- p < p.value
     }
+    ## include alignments selected in 'imask'
     mask <- mask | imask
 
     return(mask)

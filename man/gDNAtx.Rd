@@ -14,7 +14,8 @@ gDNAtx(
 )
 }
 \arguments{
-\item{x}{\linkS4class{gDNAx} object obtained with the function \code{\link{gDNAdx}()}.}
+\item{x}{\linkS4class{gDNAx} object obtained with the function
+\code{\link{gDNAdx}()}.}
 
 \item{path}{Directory where to write the filtered BAM files.}
 
@@ -44,8 +45,11 @@ A \code{data.frame} object with the number of filtered read alignments
 tallied by their origin.
 }
 \description{
-Remove gDNA contamination from RNA-seq data by filtering read alignments in BAM files
-that putatively have a gDNA origin.
+Remove gDNA contamination from RNA-seq data by filtering read alignments in
+BAM files that putatively have a gDNA origin. This is currently a wrapper
+with convenient default values for the function \code{\link{filterBAMtx}()},
+please use that function if you need greater control on how to filter RNA-seq
+alignments.
 }
 \examples{
 
