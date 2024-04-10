@@ -287,7 +287,7 @@ setMethod("strandedness", "BamFileList",
 #' @importFrom S4Vectors queryHits
 #' @importFrom GenomicAlignments invertStrand strandMode
 #' @importFrom GenomicRanges GRanges
-#' @importFrom cli cli_alert_danger
+#' @importFrom cli cli_alert_warning
 .getStrandedness <- function(gal, tx, reportAll=FALSE, verbose) {
     if (reportAll & is(gal, "GAlignmentPairs")) 
         if (strandMode(gal) != 1L)
@@ -317,9 +317,9 @@ setMethod("strandedness", "BamFileList",
     
     ambig <- length(ambaln)/(nalnst + nalnisst + length(ambaln))
     if (ambig > 0.10 && verbose) {
-        wstr <- paste("> 10% of alignments (%.1f%%) mapping to regions with",
+        wstr <- paste("> 10%% of alignments (%.1f%%) mapping to regions with",
                       "transcripts annotated to both strands")
-        cli_alert_danger(sprintf(wstr, 100*ambig))
+        cli_alert_warning(sprintf(wstr, 100*ambig))
     }
     
     if (reportAll) {
@@ -364,7 +364,7 @@ setMethod("strandedness", "BamFileList",
 #'                          strandMode2=c(0.09, 0.08, 0.07))
 #' classifyStrandMode(strnessdat)
 #'
-#' @importFrom cli cli_alert_danger
+#' @importFrom cli cli_alert_warning
 #' @export
 #' @rdname strandedness
 
@@ -390,7 +390,7 @@ classifyStrandMode <- function(strnessdat, strcutoff=0.9, weakstrcutoff=0.6,
                     strnessdat[, "strandMode2"] < strcutoff)
     if (any(weakstrmask) && warnweakstr) {
       wstr <- paste("%d BAM files show weak strandedness values [%.1f, %.1f)")
-      cli_alert_danger(sprintf(wstr, sum(weakstrmask), weakstrcutoff, strcutoff))
+      cli_alert_warning(sprintf(wstr, sum(weakstrmask), weakstrcutoff, strcutoff))
     }
     sm[strnessdat[, "strandMode1"] >= weakstrcutoff] <- 1L
     sm[strnessdat[, "strandMode2"] >= weakstrcutoff] <- 2L
@@ -400,14 +400,14 @@ classifyStrandMode <- function(strnessdat, strcutoff=0.9, weakstrcutoff=0.6,
 
 ## Private function to issue a warning when the strandedness value is
 ## computed from a low number of alignments
-#' @importFrom cli cli_alert_danger
+#' @importFrom cli cli_alert_warning
 .checkMinNaln <- function(strbysm, minnaln) {
     
     lownaln <- strbysm[,"Nalignments"] < minnaln
     
     if (any(lownaln)) {
         wstr <- "%d BAM files had < %d alignments overlapping exonic regions"
-        cli_alert_danger(sprintf(wstr, sum(lownaln), minnaln))
+        cli_alert_warning(sprintf(wstr, sum(lownaln), minnaln))
     }
 }
 

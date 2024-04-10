@@ -89,6 +89,7 @@
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers bpprogressbar<-
 #' @importFrom methods new
 #' @importFrom cli cli_alert_info cli_progress_bar cli_progress_done
+#' @importFrom cli cli_alert_success
 #' @export
 #' @rdname gDNAdx
 gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
@@ -191,7 +192,10 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     
     dxobj <- .collectDiagn(dxBAMs, bfl, rlens, singleEnd, txdb, strandMode,
                            allStrandModes, stdChrom, yieldSize, strness,
-                           igcintrng, exbytx, tx2gene, verbose)
+                           igcintrng, exbytx, tx2gene)
+    if (verbose)
+      cli_alert_success("Diagnostics completed")
+
     dxobj
 }
 
@@ -523,9 +527,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom methods new
 .collectDiagn <- function(dxBAMs, bfl, readLength, singleEnd, txdb, strandMode,
                           allStrandModes, stdChrom, yieldSize, strandedness,
-                          igcintrng, exbytx, tx2gene, verbose) {
-    if (verbose)
-        message("Collecting diagnostics")
+                          igcintrng, exbytx, tx2gene) {
     igcpct <- vapply(dxBAMs, function(x)  ## intergenic %
         100 * x$nigcaln / x$naln, FUN.VALUE = numeric(1L))
     intpct <- vapply(dxBAMs, function(x)  ## intronic %

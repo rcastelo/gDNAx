@@ -74,7 +74,7 @@
 #' @importFrom GenomicFeatures exonsBy
 #' @importFrom GenomeInfoDb keepStandardChromosomes
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers multicoreWorkers
-#' @importFrom cli cli_alert_danger cli_alert_warning cli_progress_bar cli_progress_done
+#' @importFrom cli cli_alert_warning cli_progress_bar cli_progress_done
 #' @importFrom stats p.adjust.methods
 #' @export
 #' @rdname filterBAMtx
@@ -101,7 +101,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
              "the function 'filterBAMtxFlag()' to select at least one.")
     if (testBAMtxFlag(txflag, "isInStrandedWindow") && is.na(strandMode) &&
         verbose) {
-        cli_alert_danger("Data is unstranded, stranded windows will not help.")
+        cli_alert_warning("Data is unstranded, stranded windows will not help.")
     }
 
     yieldSize <- .checkYieldSize(yieldSize)
