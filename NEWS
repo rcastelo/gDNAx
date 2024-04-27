@@ -1,3 +1,26 @@
+CHANGES IN VERSION 1.2.0 (2024-04-27)
+---------------------------------------
+
+USER VISIBLE CHANGES
+
+    o Prompt an error when a 0-byte BAM file is passed as an argument.
+
+    o Added a new filtering strategy based on stranded genomic windows that can be used when input RNA-seq data is stranded.
+
+    o gDNAx objects store now also strandedness estimated values.
+
+    o identifyStrandMode() has been deprecated in favor of strandedness().
+
+    o gDNAdx() can now automatically guess library layout and protocol.
+
+    o Added a new function gDNAtx() that performs filtering with the most common default strategy.
+
+BUG FIXES
+
+    o Bug fix in the show method for gDNAx objects.
+
+    o Bug fix when the genome() getter on GAlignment* objects is not NA.
+
 CHANGES IN VERSION 0.99.6 (2023-05-26)
 ---------------------------------------
 

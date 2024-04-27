@@ -1,10 +1,10 @@
 Package: gDNAx
 Type: Package
 Title: Diagnostics for assessing genomic DNA contamination in RNA-seq data
-Version: 1.1.13
+Version: 1.1.14
 Authors@R: c(
-  person("Beatriz", "Calvo-Serra", email = "beatriz.calvo@upf.edu", role = c("aut","cre")),
-  person("Robert", "Castelo", email = "robert.castelo@upf.edu", role = c("aut")))
+  person("Beatriz", "Calvo-Serra", email = "beatriz.calvo@upf.edu", role = c("aut")),
+  person("Robert", "Castelo", email = "robert.castelo@upf.edu", role = c("aut", "cre")))
 Description: Provides diagnostics for assessing genomic DNA contamination in
     RNA-seq data, as well as plots representing these diagnostics. Moreover, the package can be used to get an insight into the strand library protocol used and, in case of strand-specific libraries, the strandedness of the data. Furthermore, it provides functionality to filter out reads of potential gDNA origin.
 License: Artistic-2.0
