@@ -266,31 +266,40 @@
     if (length(intersect(seqlevelsStyle(gal), seqlevelsStyle(tx))) > 0)
       return(gal)
 
+    origseqlevelsstyle <- seqlevelsStyle(gal)[1]
+    targetseqlevelsstyle <- seqlevelsStyle(tx)[1]
+
+    seqlevelsStyle(gal) <- seqlevelsStyle(tx)[1]
     if (is.na(genome(gal)[1]))
       genome(gal) <- genome(tx)
 
-    seqlevelsStyle(gal) <- seqlevelsStyle(tx)[1]
     slengal <- seqlengths(gal)
     slentx <- seqlengths(tx)
     commonchr <- intersect(names(slengal), names(slentx))
+    if (length(commonchr) == 0) {
+        msg <- paste("No common sequences between the input BAM and",
+                     "the TxDb annotation package, after trying to",
+                     "change the %s input BAM sequence names into",
+                     "%s style.")
+        stop(sprintf(msg, origseqlevelsstyle, targetseqlevelsstyle))
+    }
+
     slengal <- slengal[commonchr]
     slentx <- slentx[commonchr]
     if (any(slengal != slentx)) {
         if (sum(slengal != slentx) == 1 && verbose) {
-            difflonechr <- paste("Chromosome %s has different lengths",
+            difflonechr <- paste("Sequence %s has different lengths",
                                  "between the input BAM and the TxDb",
-                                 "annotation package. This chromosome will",
-                                 "be discarded from further analysis",
-                                 sep=" ")
+                                 "annotation package. This sequence will",
+                                 "be discarded from further analysis")
             whdifflonechr <- paste(commonchr[which(slengal != slentx)],
                                     collapse=", ")
             message(sprintf(difflonechr, whdifflonechr))
         } else if (verbose) {
-            difflmultichr <- paste("Chromosomes %s have different lengths",
+            difflmultichr <- paste("Sequences %s have different lengths",
                                    "between the input BAM and the TxDb",
-                                   "annotation package. These chromosomes",
-                                   "will be discarded from further analysis",
-                                   sep=" ")
+                                   "annotation package. These sequences",
+                                   "will be discarded from further analysis")
             whdifflmultichr <- paste(commonchr[which(slengal != slentx)],
                                     collapse=", ")
             message(sprintf(difflmultichr, whdifflmultichr))
