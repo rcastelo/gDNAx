@@ -89,7 +89,7 @@
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers bpprogressbar<-
 #' @importFrom methods new
 #' @importFrom cli cli_alert_info cli_progress_bar cli_progress_done
-#' @importFrom cli cli_alert_success
+#' @importFrom cli cli_alert_success cli_alert_warning
 #' @export
 #' @rdname gDNAdx
 gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
@@ -105,6 +105,16 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
+    supportedSpeciesInAnnot <- .biocSupportedSpecies(txdb)
+    if (!supportedSpeciesInAnnot) {
+        if (stdChrom) {
+          cli_alert_warning("Cannot figure out the sequence style for the")
+          cli_alert_warning("species metadata on the input annotations")
+          cli_alert_warning(sprintf("(%s). Setting 'stdChrom=FALSE'.",
+                                    species(txdb)))
+          stdChrom <- FALSE
+        }
+    }
 
     singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
     bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize)
