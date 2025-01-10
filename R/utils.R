@@ -252,6 +252,30 @@
     (paste("package:", name, sep="") %in% search())
 }
 
+## private function .normalize_organism()
+## copied from GenomeInfoDb:::.normalize_organism()
+
+#' @importFrom IRanges CharacterList
+#' @importFrom S4Vectors unstrsplit
+.normalize_organism <- function(organism) {
+    parts <- CharacterList(strsplit(organism, "_| "))
+    parts_eltNROWS <- elementNROWS(parts)
+    ## If 3 parts or more (e.g. "Canis_lupus_familiaris") then remove part 2.
+    idx3 <- which(parts_eltNROWS >= 3L)
+    if (length(idx3) != 0L)
+        parts[idx3] <- parts[idx3][rep.int(list(-2L), length(idx3))]
+    unstrsplit(parts, sep="_")
+}
+
+## private function .biocSupportedSpecies()
+
+#' @importFrom GenomeInfoDb genomeStyles
+#' @importFrom BiocGenerics species
+.biocSupportedSpecies <- function(txdb) {
+    stopifnot(is(txdb, "TxDb")) ## QC
+    .normalize_organism(species(txdb)) %in% names(genomeStyles())
+}
+
 ## private function .matchSeqinfo()
 
 #' @importFrom GenomeInfoDb seqlengths keepSeqlevels seqlevelsStyle
