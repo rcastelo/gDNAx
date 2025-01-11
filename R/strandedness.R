@@ -153,6 +153,7 @@ setMethod("strandedness", "BamFileList",
           function(x, txdb, singleEnd, stdChrom=TRUE, exonsBy=c("gene", "tx"),
                    minnaln=200000, verbose=TRUE,
                    BPPARAM=SerialParam(progressbar=verbose)) {
+
               exonsBy <- match.arg(exonsBy)
     
               bfl <- .checkBamFiles(x)
@@ -161,12 +162,24 @@ setMethod("strandedness", "BamFileList",
               if (is.character(txdb))
                   txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
+              suppSpeciesInAnnot <- .biocSupportedSpecies(txdb)
+              if (!suppSpeciesInAnnot) {
+                  if (stdChrom) {
+                      cli_alert_warning("Cannot figure out the sequence style for the")
+                      cli_alert_warning("species metadata on the input annotations")
+                      cli_alert_warning(sprintf("(%s). Setting 'stdChrom=FALSE'.",
+                                                species(txdb)))
+                      stdChrom <- FALSE
+                  }
+              }
 
               singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
               bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize=100000L)
 
               strness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
-                                               exonsBy, minnaln, verbose, BPPARAM)
+                                               exonsBy, minnaln,
+                                               suppSpeciesInAnnot,
+                                               verbose, BPPARAM)
 
               strness
           })
@@ -179,7 +192,7 @@ setMethod("strandedness", "BamFileList",
 #' @importFrom BiocParallel bpnworkers
 #' @importFrom cli cli_progress_bar cli_progress_done
 .estimateStrandedness <- function(bfl, txdb, singleEnd, stdChrom, exonsBy,
-                                  minnaln, verbose,
+                                  minnaln, ssInAnnot, verbose,
                                   BPPARAM=SerialParam(progressbar=verbose)) {
     stopifnot(is(bfl, "BamFileList")) ## QC
 
@@ -188,7 +201,7 @@ setMethod("strandedness", "BamFileList",
                                              verbose=verbose)
 
     annot <- exonsBy(txdb, by=exonsBy)
-    if (stdChrom) {
+    if (ssInAnnot && stdChrom) {
         annot <- keepStandardChromosomes(annot, pruning.mode="fine")
         annot <- annot[lengths(annot) > 0]
     }
@@ -202,13 +215,15 @@ setMethod("strandedness", "BamFileList",
         verbose <- FALSE
         strbysm <- bplapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                             singleEnd=singleEnd, strandMode=1L, param=param,
-                            minnaln=minnaln, verbose=verbose, BPPARAM=BPPARAM)
+                            minnaln=minnaln, ssInAnnot=ssInAnnot,
+                            verbose=verbose, BPPARAM=BPPARAM)
     } else {
         if (verbose)
             idpb <- cli_progress_bar("Estimating strandedness", total=length(bfl))
         strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
                           singleEnd=singleEnd, strandMode=1L, param=param,
-                          minnaln=minnaln, verbose=verbose, idpb=idpb)
+                          minnaln=minnaln, ssInAnnot=ssInAnnot, verbose=verbose,
+                          idpb=idpb)
         if (verbose)
             cli_progress_done(idpb)
     }
@@ -226,7 +241,7 @@ setMethod("strandedness", "BamFileList",
 #' @importFrom GenomeInfoDb keepStandardChromosomes
 #' @importFrom cli cli_progress_update
 .strness_oneBAM <- function(bf, tx, stdChrom, singleEnd, strandMode=1L,
-                            param, minnaln, verbose, idpb) {
+                            param, minnaln, ssInAnnot, verbose, idpb) {
     if (isOpen(bf))
         close(bf)
     
@@ -246,16 +261,18 @@ setMethod("strandedness", "BamFileList",
         else
             gal <- readGAlignmentPairs(bf, param=param, strandMode=strandMode,
                                        use.names=FALSE)
-        if (stdChrom)
+        if (ssInAnnot && stdChrom) {
             if (singleEnd)
                 gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
             else
                 gal <- keepStandardChromosomes(gal, pruning.mode="fine")
+        }
         
         if (length(gal) == 0)
             break
         
-        gal <- .matchSeqinfo(gal, tx, verbose)
+        if (ssInAnnot)
+            gal <- .matchSeqinfo(gal, tx, verbose)
         nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE, verbose)
         nalnbystr <- nalnbf + nalnbystr
         naln <- nalnbystr["Nalignments"]

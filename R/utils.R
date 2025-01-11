@@ -288,7 +288,7 @@
               "TxDb" %in% class(tx)) ## QC
 
     if (length(intersect(seqlevelsStyle(gal), seqlevelsStyle(tx))) > 0)
-      return(gal)
+        return(gal)
 
     origseqlevelsstyle <- seqlevelsStyle(gal)[1]
     targetseqlevelsstyle <- seqlevelsStyle(tx)[1]
