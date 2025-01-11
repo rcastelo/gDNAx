@@ -105,8 +105,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
                                              verbose=verbose)
-    supportedSpeciesInAnnot <- .biocSupportedSpecies(txdb)
-    if (!supportedSpeciesInAnnot) {
+    suppSpeciesInAnnot <- .biocSupportedSpecies(txdb)
+    if (!suppSpeciesInAnnot) {
         if (stdChrom) {
           cli_alert_warning("Cannot figure out the sequence style for the")
           cli_alert_warning("species metadata on the input annotations")
@@ -140,8 +140,9 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         strandMode <- .checkStrandMode(strandMode)
     else {
         strness <- .estimateStrandedness(bfl, txdb, singleEnd, stdChrom,
-                                         exonsBy, minnaln, verbose,
-                                         BPPARAM)
+                                         exonsBy, minnaln,
+                                         ssInAnnot=suppSpeciesInAnnot,
+                                         verbose, BPPARAM)
         allStrandModes <- classifyStrandMode(strness, warnweakstr=FALSE)
         smtab <- table(allStrandModes, useNA="always")
         strandMode <- as.integer(names(which.max(smtab)))
@@ -185,8 +186,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         dxBAMs <- bplapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                            int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                            stdChrom=stdChrom,singleEnd=singleEnd,
-                           strandMode=strandMode, param=param,
-                           verbose=verbose, BPPARAM=BPPARAM)
+                           strandMode=strandMode, ssInAnnot=suppSpeciesInAnnot,
+                           param=param, verbose=verbose, BPPARAM=BPPARAM)
     } else {
         idpb <- NULL
         if (verbose)
@@ -194,8 +195,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         dxBAMs <- lapply(bfl, .gDNAdx_oneBAM, igc=igcintrng$igcrng,
                          int=igcintrng$intrng, tx=exbytx, tx2gene=tx2gene,
                          stdChrom=stdChrom, singleEnd=singleEnd,
-                         strandMode=strandMode, param=param, verbose=verbose,
-                         idpb=idpb)
+                         strandMode=strandMode, ssInAnnot=suppSpeciesInAnnot,
+                         param=param, verbose=verbose, idpb=idpb)
         if (verbose)
             cli_progress_done(idpb)
     }
@@ -223,7 +224,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom GenomicRanges GRanges grglist
 #' @importFrom cli cli_progress_update
 .gDNAdx_oneBAM <- function(bf, igc, int, tx, tx2gene, stdChrom, singleEnd,
-                           strandMode, param, verbose, idpb) {
+                           strandMode, ssInAnnot, param, verbose, idpb) {
     if (isOpen(bf))
         close(bf)
     
@@ -243,7 +244,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         else
             gal <- keepStandardChromosomes(gal, pruning.mode="fine")
 
-    gal <- .matchSeqinfo(gal, tx, verbose)
+    if (ssInAnnot)
+        gal <- .matchSeqinfo(gal, tx, verbose)
     naln <- length(gal)
 
     ## intergenic alignments
