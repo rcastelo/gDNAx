@@ -86,6 +86,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     bfl <- object@bfl
     singleEnd <- object@singleEnd
     strandMode <- object@strandMode
+    ssInAnnot <- object@suppSpeciesInAnnot
     stdChrom <- object@stdChrom
     igc <- object@intergenic
     int <- object@intronic
@@ -133,24 +134,24 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         verbose <- FALSE
         out.st <- bplapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
                            path=path, txflag=txflag, singleEnd=singleEnd,
-                           strandMode=strandMode, stdChrom=stdChrom,
-                           tx2gene=tx2gene, param=param, wsize=wsize,
-                           wstep=wstep, pstrness=pstrness, p.value=p.value,
-                           p.adj.method=p.adjust.methods,
+                           strandMode=strandMode, ssInAnnot=ssInAnnot,
+                           stdChrom=stdChrom, tx2gene=tx2gene, param=param,
+                           wsize=wsize, wstep=wstep, pstrness=pstrness,
+                           p.value=p.value, p.adj.method=p.adjust.methods,
                            verbose=verbose, BPPARAM=BPPARAM)
     } else {
-      idpb <- NULL
-      if (verbose)
-          idpb <- cli_progress_bar("Filtering", total=length(bfl))
-      out.st <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int,tx=tx,path=path,
-                       txflag=txflag, singleEnd=singleEnd,
-                       strandMode=strandMode, stdChrom=stdChrom,
-                       tx2gene=tx2gene, param=param, wsize=wsize, wstep=wstep,
-                       pstrness=pstrness, p.value=p.value,
-                       p.adj.method=p.adjust.methods, verbose=verbose,
-                       idpb=idpb)
-      if (verbose)
-          cli_progress_done(idpb)
+        idpb <- NULL
+        if (verbose)
+            idpb <- cli_progress_bar("Filtering", total=length(bfl))
+        out.st <- lapply(bfl, .filter_oneBAMtx, igc=igc, int=int, tx=tx,
+                         path=path, txflag=txflag, singleEnd=singleEnd,
+                         strandMode=strandMode, ssInAnnot=ssInAnnot,
+                         stdChrom=stdChrom, tx2gene=tx2gene, param=param,
+                         wsize=wsize, wstep=wstep, pstrness=pstrness,
+                         p.value=p.value, p.adj.method=p.adjust.methods,
+                         verbose=verbose, idpb=idpb)
+        if (verbose)
+            cli_progress_done(idpb)
     }
 
     out.st <- data.frame(do.call("rbind", out.st))
@@ -164,8 +165,9 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 #' @importFrom Rsamtools filterBam sortBam indexBam
 #' @importFrom cli cli_progress_update
 .filter_oneBAMtx <- function(bf, igc, int, tx, path, txflag, singleEnd,
-                             strandMode, stdChrom, tx2gene, param, wsize, wstep,
-                             pstrness, p.value, p.adj.method, verbose, idpb) {
+                             strandMode, ssInAnnot, stdChrom, tx2gene, param,
+                             wsize, wstep, pstrness, p.value, p.adj.method,
+                             verbose, idpb) {
 
     onesuffix <- c(isIntergenic="IGC",
                    isIntronic="INT",
@@ -227,6 +229,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     txflag <- get("txflag", envir=parent.frame(n))
     singleEnd <- get("singleEnd", envir=parent.frame(n))
     strandMode <- get("strandMode", envir=parent.frame(n))
+    ssInAnnot <- get("ssInAnnot", envir=parent.frame(n))
     stdChrom <- get("stdChrom", envir=parent.frame(n))
     igc <- get("igc", envir=parent.frame(n))
     int <- get("int", envir=parent.frame(n))
@@ -257,7 +260,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
     if (!singleEnd)
         gal <- .makeGALPE(param, strandMode, gal)
     envstats <- get("stats", envir=statsenv)
-    if (stdChrom) {
+    if (ssInAnnot && stdChrom) {
         ngal <- length(gal)
         if (singleEnd)
             gal <- keepStandardChromosomes(gal, pruning.mode="coarse")
@@ -271,7 +274,8 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
         }
     }
     
-    gal <- .matchSeqinfo(gal, tx, verbose)
+    if (ssInAnnot)
+        gal <- .matchSeqinfo(gal, tx, verbose)
     
     alntype <- .getalntype(gal, txflag, igc, int, strandMode, tx, tx2gene,
                            singleEnd, wsize, wstep, pstrness, p.value,

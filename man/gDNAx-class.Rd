@@ -98,6 +98,10 @@ class for further detail.}
 \item{\code{allStrandModes}}{Vector of integer values each of them corresponding to
 a \code{strandMode} value estimated from a BAM file.}
 
+\item{\code{suppSpeciesInAnnot}}{Logical value indicating whether the species metdata
+in the input annotations is supported by the information available at the
+Bioconductor GenomeInfoDb package.}
+
 \item{\code{stdChrom}}{Logical value indicating whether only alignments in the
 'standard chromosomes' should be used. Consult the help page of the function
 \code{\link[GenomeInfoDb]{keepStandardChromosomes}} from the package

@@ -81,7 +81,7 @@ resources, and intergenic and intronic genomic ranges will exclude them.}
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
 
-\item{BPPARAM}{An object of a \linkS4class{BiocParallelParam} subclass
+\item{BPPARAM}{An object of a [`BiocParallel::BiocParallelParam`] subclass
 to configure the parallel execution of the code. By default, a
 \linkS4class{SerialParam} object is used, which does not use any
 parallelization, with the flag \code{progress=TRUE} to show progress
