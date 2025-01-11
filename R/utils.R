@@ -255,8 +255,8 @@
 ## private function .normalize_organism()
 ## copied from GenomeInfoDb:::.normalize_organism()
 
+#' @importFrom S4Vectors unstrsplit elementNROWS
 #' @importFrom IRanges CharacterList
-#' @importFrom S4Vectors unstrsplit
 .normalize_organism <- function(organism) {
     parts <- CharacterList(strsplit(organism, "_| "))
     parts_eltNROWS <- elementNROWS(parts)
@@ -274,6 +274,24 @@
 .biocSupportedSpecies <- function(txdb) {
     stopifnot(is(txdb, "TxDb")) ## QC
     .normalize_organism(species(txdb)) %in% names(genomeStyles())
+}
+
+## private function .checkSeqlevels()
+
+#' @importFrom Rsamtools scanBamHeader
+#' @importFrom cli cli_abort
+.checkSeqlevels <- function(bfl, txdb) {
+    stopifnot(is(txdb, "TxDb")) ## QC
+
+    seqsl <- lapply(bfl, function(bf) {
+                        hdr <- scanBamHeader(bf)
+                        names(hdr$targets)
+                    })
+    seqsl <- unique(unlist(seqsl, use.names=FALSE))
+    ncommonl <- length(intersect(seqsl, seqlevels(txdb)))
+    if (ncommonl == 0)
+        cli_abort(c("x"=paste("No common sequence levels between BAM file(s)",
+                              "and input annotations.")))
 }
 
 ## private function .matchSeqinfo()

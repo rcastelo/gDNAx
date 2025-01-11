@@ -18,6 +18,10 @@
 #' @slot allStrandModes Vector of integer values each of them corresponding to
 #' a \code{strandMode} value estimated from a BAM file.
 #'
+#' @slot suppSpeciesInAnnot Logical value indicating whether the species metdata
+#' in the input annotations is supported by the information available at the
+#' Bioconductor GenomeInfoDb package.
+#'
 #' @slot stdChrom Logical value indicating whether only alignments in the
 #' 'standard chromosomes' should be used. Consult the help page of the function
 #' \code{\link[GenomeInfoDb]{keepStandardChromosomes}} from the package
@@ -82,6 +86,7 @@ setClass("gDNAx",
                         singleEnd="logical",
                         strandMode="integer",
                         allStrandModes="integer",
+                        suppSpeciesInAnnot="logical",
                         stdChrom="logical",
                         readLength="integer",
                         yieldSize="integer",
@@ -166,7 +171,7 @@ setMethod("show", "gDNAx",
                     }
                 }
                 if (object@stdChrom)
-                    cat("# Sequences: only standard chromosomes\n")
+                    cat("# Sequences: only assembled molecules\n")
                 else
                     cat("# Sequences: all\n")
                 cat(sprintf("# Annotation pkg: %s\n", object@txdbpkg))

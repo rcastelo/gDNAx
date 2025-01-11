@@ -56,7 +56,7 @@
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
-#' @param BPPARAM An object of a \linkS4class{BiocParallelParam} subclass
+#' @param BPPARAM An object of a [`BiocParallel::BiocParallelParam`] subclass
 #' to configure the parallel execution of the code. By default, a
 #' \linkS4class{SerialParam} object is used, which does not use any
 #' parallelization, with the flag \code{progress=TRUE} to show progress
@@ -114,6 +114,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
                                     species(txdb)))
           stdChrom <- FALSE
         }
+        .checkSeqlevels(bfl, txdb)
     }
 
     singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
@@ -202,8 +203,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     }
     
     dxobj <- .collectDiagn(dxBAMs, bfl, rlens, singleEnd, txdb, strandMode,
-                           allStrandModes, stdChrom, yieldSize, strness,
-                           igcintrng, exbytx, tx2gene)
+                           allStrandModes, suppSpeciesInAnnot, stdChrom,
+                           yieldSize, strness, igcintrng, exbytx, tx2gene)
     if (verbose)
       cli_alert_success("Diagnostics completed")
 
@@ -538,8 +539,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom BiocGenerics path
 #' @importFrom methods new
 .collectDiagn <- function(dxBAMs, bfl, readLength, singleEnd, txdb, strandMode,
-                          allStrandModes, stdChrom, yieldSize, strandedness,
-                          igcintrng, exbytx, tx2gene) {
+                          allStrandModes, suppSpeciesInAnnot, stdChrom,
+                          yieldSize, strandedness, igcintrng, exbytx, tx2gene) {
     igcpct <- vapply(dxBAMs, function(x)  ## intergenic %
         100 * x$nigcaln / x$naln, FUN.VALUE = numeric(1L))
     intpct <- vapply(dxBAMs, function(x)  ## intronic %
@@ -578,10 +579,10 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     names(scefrglen) <- gsub(".bam", "", names(scefrglen))
     new("gDNAx", bfl=bfl, txdbpkg=txdb$packageName, singleEnd=singleEnd,
         strandMode=strandMode, allStrandModes=allStrandModes,
-        stdChrom=stdChrom, readLength=readLength, yieldSize=yieldSize,
-        diagnostics=dx, strandedness=strandedness,
-        igcfrglen=igcfrglen, intfrglen=intfrglen, scjfrglen=scjfrglen,
-        scefrglen=scefrglen, intergenic=igcintrng$igcrng,
+        suppSpeciesInAnnot=suppSpeciesInAnnot, stdChrom=stdChrom,
+        readLength=readLength, yieldSize=yieldSize, diagnostics=dx,
+        strandedness=strandedness, igcfrglen=igcfrglen, intfrglen=intfrglen,
+        scjfrglen=scjfrglen, scefrglen=scefrglen, intergenic=igcintrng$igcrng,
         intronic=igcintrng$intrng, transcripts=exbytx, tx2gene=tx2gene)
 }
 
