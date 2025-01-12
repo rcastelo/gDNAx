@@ -2,9 +2,9 @@
 #'
 #' This is a class for storing the results of a call to the 'gDNAdx()' function.
 #'
-#' @slot bfl A \linkS4class{BamFileList} object.
+#' @slot bfl A [`BamFileList`][Rsamtools::BamFileList] object.
 #'
-#' @slot txdbpkg A \linkS4class{TxDb} object.
+#' @slot txdbpkg A [`TxDb`][GenomicFeatures::TxDb] object.
 #'
 #' @slot singleEnd Logical value indicating if reads are single (\code{TRUE})
 #' or paired-end (\code{FALSE}).

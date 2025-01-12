@@ -82,9 +82,9 @@ This is a class for storing the results of a call to the 'gDNAdx()' function.
 \section{Slots}{
 
 \describe{
-\item{\code{bfl}}{A \linkS4class{BamFileList} object.}
+\item{\code{bfl}}{A \code{\link[Rsamtools:BamFile-class]{BamFileList}} object.}
 
-\item{\code{txdbpkg}}{A \linkS4class{TxDb} object.}
+\item{\code{txdbpkg}}{A \code{\link[GenomicFeatures:TxDb-class]{TxDb}} object.}
 
 \item{\code{singleEnd}}{Logical value indicating if reads are single (\code{TRUE})
 or paired-end (\code{FALSE}).}

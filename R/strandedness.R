@@ -7,8 +7,9 @@
 #' the proportion of reads aligning to the same or opposite strand as
 #' transcripts in the annotations.
 #'
-#' @param bfl A \code{BamFile} or \code{BamFileList} object, or a character
-#' string vector of BAM filenames.
+#' @param bfl A [`BamFile`][Rsamtools::BamFile] or
+#' [`BamFileList`][Rsamtools::BamFileList] object, or a character string vector
+#' of BAM filenames.
 #'
 #' @param txdb A character string of a \code{TxDb} package, or a \code{TxDb}
 #' object, with gene and transcript annotations. For accurate calculations, it
@@ -38,11 +39,13 @@
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
-#' @param BPPARAM An object of a \linkS4class{BiocParallelParam} subclass
+#' @param BPPARAM An object of a
+#' [`BiocParallelParam`][BiocParallel::BiocParallelParam] subclass
 #' to configure the parallel execution of the code. By default, a
-#' \linkS4class{SerialParam} object is used, which does not use any
-#' parallelization, with the flag \code{progress=TRUE} to show progress
-#' through the calculations.
+#' [`SerialParam`][BiocParallel::SerialParam] object is used, which does
+#' not use any parallelization, with the flag \code{progress=TRUE} to show
+#' progress through the calculations.
+#'
 #'
 #' @return A \link[base:list]{list} object with two elements:
 #' \itemize{
@@ -142,7 +145,7 @@ setMethod("strandedness", "character",
                            verbose, BPPARAM)
           })
 
-#' @param x A \linkS4class{BamFileList} object.
+#' @param x A [`BamFileList`][Rsamtools::BamFileList] object.
 #'
 #' @importFrom BiocParallel SerialParam
 #' @export
@@ -435,8 +438,10 @@ classifyStrandMode <- function(strnessdat, strcutoff=0.9, weakstrcutoff=0.6,
 #' the proportion of reads aligning to the same strand as feature annotations
 #' in relation to the total number of reads aligning to that feature.
 #'
-#' @param bfl A \code{BamFile} or \code{BamFileList} object, or a character
-#' string vector of BAM filenames.
+#' @param bfl A [`BamFile`][Rsamtools::BamFile] or
+#' [`BamFileList`][Rsamtools::BamFileList] object, or a character string vector
+#' of BAM filenames.
+#'
 #'
 #' @param features A \code{GRanges} or \code{GRangesList} object with
 #' annotations of features (e.g. genes, transcripts, etc.).
@@ -468,13 +473,15 @@ classifyStrandMode <- function(strnessdat, strcutoff=0.9, weakstrcutoff=0.6,
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
-#' @param BPPARAM An object of a \linkS4class{BiocParallelParam} subclass
+#' @param BPPARAM An object of a
+#' [`BiocParallelParam`][BiocParallel::BiocParallelParam] subclass
 #' to configure the parallel execution of the code. By default, a
-#' \linkS4class{SerialParam} object is used, which does not use any
-#' parallelization, with the flag \code{progress=TRUE} to show progress
-#' through the calculations.
+#' [`SerialParam`][BiocParallel::SerialParam] object is used, which does
+#' not use any parallelization, with the flag \code{progress=TRUE} to show
+#' progress through the calculations.
 #'
-#' @return A \linkS4class{SummarizedExperiment} with three assays:
+#' @return A [`SummarizedExperiment`][SummarizedExperiment::SummarizedExperiment]
+#' with three assays:
 #' \itemize{
 #'   \item "strness": contains strandedness values for each feature and sample.
 #'   \item "counts": number of reads aligning to each feature on the same 

@@ -41,11 +41,12 @@
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
-#' @param BPPARAM An object of a \linkS4class{BiocParallelParam} subclass
+#' @param BPPARAM An object of a
+#' [`BiocParallelParam`][BiocParallel::BiocParallelParam] subclass
 #' to configure the parallel execution of the code. By default, a
-#' \linkS4class{SerialParam} object is used, which does not use any
-#' parallelization, with the flag \code{progress=TRUE} to show progress
-#' through the calculations.
+#' [`SerialParam`][BiocParallel::SerialParam] object is used, which does
+#' not use any parallelization, with the flag \code{progress=TRUE} to show
+#' progress through the calculations.
 #'
 #' @return A vector of output filename paths.
 #' 

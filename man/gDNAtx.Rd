@@ -19,12 +19,12 @@ gDNAtx(
 
 \item{path}{Directory where to write the filtered BAM files.}
 
-\item{sbparam}{Either \code{NULL} (default) or a \linkS4class{ScanBamParam}
-object. The \code{NULL} value implies that internally a
-\linkS4class{ScanBamParam} object is built with the following flags:
-\code{isUnmappedQuery=FALSE}, \code{isProperPair=!singleEnd(x)},
-\code{isSecondaryAlignment=FALSE}, \code{isNotPassingQualityControls=FALSE},
-\code{isDuplicate=FALSE}.}
+\item{sbparam}{Either \code{NULL} (default) or a
+\code{\link[Rsamtools:ScanBamParam-class]{ScanBamParam}} object. The \code{NULL} value
+implies that internally a \code{\link[Rsamtools:ScanBamParam-class]{ScanBamParam}} object
+is built with the following flags: \code{isUnmappedQuery=FALSE},
+\code{isProperPair=!singleEnd(x)}, \code{isSecondaryAlignment=FALSE},
+\code{isNotPassingQualityControls=FALSE}, \code{isDuplicate=FALSE}.}
 
 \item{yieldSize}{(Default 1e6) Number of records in the input BAM file to
 yield each time the file is read. The lower the value, the smaller memory
@@ -34,11 +34,12 @@ may decrease the overall performance.}
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
 
-\item{BPPARAM}{An object of a \linkS4class{BiocParallelParam} subclass
+\item{BPPARAM}{An object of a
+\code{\link[BiocParallel:BiocParallelParam-class]{BiocParallelParam}} subclass
 to configure the parallel execution of the code. By default, a
-\linkS4class{SerialParam} object is used, which does not use any
-parallelization, with the flag \code{progress=TRUE} to show progress
-through the calculations.}
+\code{\link[BiocParallel:SerialParam-class]{SerialParam}} object is used, which does
+not use any parallelization, with the flag \code{progress=TRUE} to show
+progress through the calculations.}
 }
 \value{
 A \code{data.frame} object with the number of filtered read alignments

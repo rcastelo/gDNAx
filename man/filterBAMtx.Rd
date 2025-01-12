@@ -70,17 +70,18 @@ are compared against the cutoff value specified in the parameter
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
 
-\item{BPPARAM}{An object of a \linkS4class{BiocParallelParam} subclass
+\item{BPPARAM}{An object of a
+\code{\link[BiocParallel:BiocParallelParam-class]{BiocParallelParam}} subclass
 to configure the parallel execution of the code. By default, a
-\linkS4class{SerialParam} object is used, which does not use any
-parallelization, with the flag \code{progress=TRUE} to show progress
-through the calculations.}
+\code{\link[BiocParallel:SerialParam-class]{SerialParam}} object is used, which does
+not use any parallelization, with the flag \code{progress=TRUE} to show
+progress through the calculations.}
 
 \item{isSpliceCompatibleJunction}{(Default FALSE) Logical value indicating
-if spliced alignments overlapping a transcript in a 
+if spliced alignments overlapping a transcript in a
 "splice compatible" way should be included in the BAM file. For
 paired-end reads, one or both alignments must have one or more splice
-sites compatible with splicing. See 
+sites compatible with splicing. See
 \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.}
 
 \item{isSpliceCompatibleExonic}{(Default FALSE) Logical value indicating
@@ -88,7 +89,7 @@ if alignments without a splice site, but that overlap a transcript
 in a "splice compatible" way, should be included in the BAM file.
 For paired-end reads, none of the alignments must be spliced, and
 each pair can be in different exons (or in the same one), as long as
-they are "splice compatible". See 
+they are "splice compatible". See
 \code{\link[GenomicAlignments:OverlapEncodings-class]{OverlapEncodings}}.}
 
 \item{isInStrandedWindow}{(Default FALSE) Logical value
@@ -115,7 +116,7 @@ A vector of output filename paths.
 Filter alignments in a BAM file using criteria based on a
 transcriptome annotation.
 
-Use 'filterBAMtxFlag()' to set what types of alignment in a BAM 
+Use 'filterBAMtxFlag()' to set what types of alignment in a BAM
 file should be filtered using the function 'filterBAMtx()',
 among being splice-compatible with one or more exon-exon junctions,
 splice-compatible exonic, splice-compatible exonic in a window, intronic or
