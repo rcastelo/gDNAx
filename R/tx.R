@@ -11,12 +11,12 @@
 #'
 #' @param path Directory where to write the filtered BAM files.
 #'
-#' @param sbparam Either \code{NULL} (default) or a \linkS4class{ScanBamParam}
-#' object. The \code{NULL} value implies that internally a
-#' \linkS4class{ScanBamParam} object is built with the following flags:
-#' \code{isUnmappedQuery=FALSE}, \code{isProperPair=!singleEnd(x)},
-#' \code{isSecondaryAlignment=FALSE}, \code{isNotPassingQualityControls=FALSE},
-#' \code{isDuplicate=FALSE}.
+#' @param sbparam Either \code{NULL} (default) or a
+#' [`ScanBamParam`][Rsamtools::ScanBamParam] object. The \code{NULL} value
+#' implies that internally a [`ScanBamParam`][Rsamtools::ScanBamParam] object
+#' is built with the following flags: \code{isUnmappedQuery=FALSE},
+#' \code{isProperPair=!singleEnd(x)}, \code{isSecondaryAlignment=FALSE},
+#' \code{isNotPassingQualityControls=FALSE}, \code{isDuplicate=FALSE}.
 #'
 #' @param yieldSize (Default 1e6) Number of records in the input BAM file to
 #' yield each time the file is read. The lower the value, the smaller memory
@@ -26,11 +26,13 @@
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
-#' @param BPPARAM An object of a \linkS4class{BiocParallelParam} subclass
+#' @param BPPARAM An object of a
+#' [`BiocParallelParam`][BiocParallel::BiocParallelParam] subclass
 #' to configure the parallel execution of the code. By default, a
-#' \linkS4class{SerialParam} object is used, which does not use any
-#' parallelization, with the flag \code{progress=TRUE} to show progress
-#' through the calculations.
+#' [`SerialParam`][BiocParallel::SerialParam] object is used, which does
+#' not use any parallelization, with the flag \code{progress=TRUE} to show
+#' progress through the calculations.
+#'
 #'
 #' @return A \code{data.frame} object with the number of filtered read alignments
 #' tallied by their origin.

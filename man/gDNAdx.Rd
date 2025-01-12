@@ -81,11 +81,12 @@ resources, and intergenic and intronic genomic ranges will exclude them.}
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
 
-\item{BPPARAM}{An object of a [`BiocParallel::BiocParallelParam`] subclass
+\item{BPPARAM}{An object of a
+\code{\link[BiocParallel:BiocParallelParam-class]{BiocParallelParam}} subclass
 to configure the parallel execution of the code. By default, a
-\linkS4class{SerialParam} object is used, which does not use any
-parallelization, with the flag \code{progress=TRUE} to show progress
-through the calculations.}
+\code{\link[BiocParallel:SerialParam-class]{SerialParam}} object is used, which does
+not use any parallelization, with the flag \code{progress=TRUE} to show
+progress through the calculations.}
 
 \item{x}{A 'gDNAx' object.}
 
@@ -100,7 +101,7 @@ to the index number of the BAM file in 'x'.}
 \item{...}{Named arguments to be passed to \code{\link[base:plot]{plot}}.}
 }
 \value{
-A \linkS4class{gDNAx} object.
+A \code{\link{gDNAx}} object.
 }
 \description{
 Calculate diagnostics for assessing the presence of genomic DNA (gDNA)

@@ -56,13 +56,14 @@
 #' @param verbose (Default TRUE) Logical value indicating if progress should be
 #' reported through the execution of the code.
 #'
-#' @param BPPARAM An object of a [`BiocParallel::BiocParallelParam`] subclass
+#' @param BPPARAM An object of a
+#' [`BiocParallelParam`][BiocParallel::BiocParallelParam] subclass
 #' to configure the parallel execution of the code. By default, a
-#' \linkS4class{SerialParam} object is used, which does not use any
-#' parallelization, with the flag \code{progress=TRUE} to show progress
-#' through the calculations.
+#' [`SerialParam`][BiocParallel::SerialParam] object is used, which does
+#' not use any parallelization, with the flag \code{progress=TRUE} to show
+#' progress through the calculations.
 #'
-#' @return A \linkS4class{gDNAx} object.
+#' @return A [`gDNAx`] object.
 #' 
 #' @examples
 #' library(gDNAinRNAseqData)
@@ -101,6 +102,12 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     bfl <- .checkBamFiles(bfl)
     yieldSize <- .checkYieldSize(yieldSize)
     .checkSEandSCargs(singleEnd, stdChrom)
+    singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
+    bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize)
+    rlens <- .readLengths(bfl, singleEnd, verbose, BPPARAM)
+    maxfrglen <- max(rlens)
+    if (!singleEnd)
+      maxfrglen <- 2 * max(rlens)
 
     if (is.character(txdb))
         txdb <- .loadAnnotationPackageObject(txdb, "txdb", "TxDb",
@@ -109,20 +116,13 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     if (!suppSpeciesInAnnot) {
         if (stdChrom) {
           cli_alert_warning("Cannot figure out the sequence style for the")
-          cli_alert_warning("species metadata on the input annotations")
-          cli_alert_warning(sprintf("(%s). Setting 'stdChrom=FALSE'.",
-                                    species(txdb)))
+          fmtstr <- "species metadata on the input annotations (%s)."
+          cli_alert_warning(sprintf(fmtstr, species(txdb)))
+          cli_alert_warning("Setting 'stdChrom=FALSE'.")
           stdChrom <- FALSE
         }
         .checkSeqlevels(bfl, txdb)
     }
-
-    singleEnd <- !.checkPairedEnd(bfl, singleEnd, BPPARAM)
-    bfl <- .checkBamFileListArgs(bfl, singleEnd, yieldSize)
-    rlens <- .readLengths(bfl, singleEnd, verbose, BPPARAM)
-    maxfrglen <- max(rlens)
-    if (!singleEnd)
-      maxfrglen <- 2 * max(rlens)
 
     if (verbose && length(bfl) > 10 && bpnworkers(BPPARAM) == 1 &&
         multicoreWorkers() > 1) {
@@ -159,19 +159,19 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         }
     }
 
-    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, stdChrom, strandMode,
-                                    useRMSK, verbose)
+    igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, suppSpeciesInAnnot,
+                                    stdChrom, strandMode, useRMSK, verbose)
     if (verbose)
         cli_alert_info(sprintf("Fetching transcript-level annotations for %s",
                                genome(txdb)[1]))
     exbytx <- exonsBy(txdb, by="tx") ## fetch transcript annotations
-    if (stdChrom) {
+    if (suppSpeciesInAnnot && stdChrom) {
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
         exbytx <- exbytx[lengths(exbytx) > 0]
     }
     genetxid <- suppressMessages(select(txdb, keys=names(exbytx),
                                         columns="GENEID", keytype="TXID"))
-    stopifnot(identical(as.integer(genetxid$TXID), seq_len(nrow(genetxid))))
+    stopifnot(nrow(genetxid) == length(exbytx)) ## QC
     tx2gene <- rep(NA_character_, nrow(genetxid))
     mask <- !is.na(genetxid$GENEID)
     tx2gene[mask] <- genetxid$GENEID[mask]
@@ -451,7 +451,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom GenomeInfoDb keepStandardChromosomes genome
 #' @importFrom GenomicRanges GRanges strand strand<- gaps intersect width
 #' @importFrom GenomicRanges setdiff
-.fetchIGCandINTrng <- function(txdb, maxfrglen, stdChrom, strandMode,
+.fetchIGCandINTrng <- function(txdb, maxfrglen, ssInAnnot, stdChrom, strandMode,
                                useRMSK, verbose) {
     ## fetch ranges of annotated genes, discard gene information and project
     ## them into genomic coordinates. use exonsBy() instead of genes() to
@@ -461,41 +461,52 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         cli_alert_info(sprintf("Fetching gene-level annotations for %s",
                                genome(txdb)[1]))
     exbygn <- exonsBy(txdb, by="gene")
-    if (stdChrom) ## important to use 'pruning.mode="fine"' here
+    if (ssInAnnot && stdChrom) ## important to use 'pruning.mode="fine"' here
         exbygn <- keepStandardChromosomes(exbygn, pruning.mode="fine")
     exbygnrng <- unlist(range(exbygn), use.names=FALSE)
     mcols(exbygnrng) <- NULL
     exbygnrng <- reduce(exbygnrng)
 
+    if (verbose)
+        cli_alert_info("Building intergenic and intronic annotations")
+
     gnrmskrng <- GRanges()
     if (useRMSK) {
         ## fetch ranges of RepeatMasker annot. and project them into genomic coord.
-        rmskdb <- .fetchRmsk(txdb, verbose)
-        if (verbose)
-            cli_alert_info("Building intergenic and intronic annotations")
+        rmskdb <- .fetchRmsk(txdb, ssInAnnot, verbose)
+        if (is.null(rmskdb)) {
+            fmtstr <- "Could not fetch UCSC RepeatMasker annotations for %s."
+            cli_alert_warning(sprintf(fmtstr, genome(txdb)[1]))
+            cli_alert_warning("Setting 'useRMSK=FALSE'.")
+            useRMSK <- FALSE
+        }
 
-        if (stdChrom)
-            rmskdb <- keepStandardChromosomes(rmskdb, pruning.mode="coarse")
-        rmskrng <- reduce(rmskdb)
-        gnrmskrng <- sort(c(unlist(reduce(exbygn), use.names=FALSE), rmskrng))
-    } else
+        if (useRMSK) {
+            if (ssInAnnot && stdChrom)
+                rmskdb <- keepStandardChromosomes(rmskdb, pruning.mode="coarse")
+            rmskrng <- reduce(rmskdb)
+            gnrmskrng <- sort(c(unlist(reduce(exbygn), use.names=FALSE), rmskrng))
+        }
+    }
+
+    if (!useRMSK)
         gnrmskrng <- unlist(reduce(exbygn), use.names=FALSE)
 
     ## fetch ranges of projected intron coordinates, i.e. non-overlapping introns
     pintrons <- sort(intersect(gaps(gnrmskrng), exbygnrng))
     if (is.na(strandMode))
         pintrons <- setdiff(pintrons, gnrmskrng, ignore.strand=TRUE)
-    if (stdChrom)
+    if (ssInAnnot && stdChrom)
         pintrons <- keepStandardChromosomes(pintrons, pruning.mode="coarse")
     pintrons <- pintrons[width(pintrons) >= maxfrglen]
 
     if (useRMSK) {
       ## put together gene and repeat annotations
       rmskrng <- reduce(rmskdb, ignore.strand=TRUE)
-      strand(exbygnrng) <- "*"
       gnrmskrng <- sort(c(exbygnrng, rmskrng))
     } else
       gnrmskrng <- exbygnrng
+    strand(gnrmskrng) <- "*"
 
     ## fetch ranges of intergenic regions as those complementary to the
     ## previous genic and repeat ranges, collapsing neighboring ranges closer
@@ -507,7 +518,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     igcrng <- igcrng[strand(igcrng) == "*"]
     igcrng <- sort(igcrng)
     igcrng <- igcrng[width(igcrng) >= maxfrglen]
-    if (stdChrom)
+    if (ssInAnnot && stdChrom)
         igcrng <- keepStandardChromosomes(igcrng, pruning.mode="coarse")
     
     list(igcrng=igcrng, intrng=pintrons)
@@ -517,21 +528,35 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 #' @importFrom AnnotationHub AnnotationHub query
 #' @importFrom GenomeInfoDb genome
 #' @importFrom cli cli_alert_info
-.fetchRmsk <- function(txdb, verbose) {
+.fetchRmsk <- function(txdb, ssInAnnot, verbose) {
     
+    if (ssInAnnot) {
+        ## try to guess the right genome code for UCSC, e.g.,
+        ## switching from GRCm38 to mm10
+        if (seqlevelsStyle(txdb)[1] != "UCSC") {
+            ## ensure the switch works by restricting it to
+            ## 'standard' chromosomes
+            txdb <- keepStandardChromosomes(txdb)
+            seqlevelsStyle(txdb) <- "UCSC"
+        }
+    }
+
     if (verbose)
-        cli_alert_info(sprintf("Fetching RepeatMasker annotations for %s",
+        cli_alert_info(sprintf("Fetching UCSC RepeatMasker annotations for %s",
                                genome(txdb)[1]))
     suppressMessages(ah <- AnnotationHub())
     suppressMessages(ahres <- query(ah, c("UCSCRepeatMasker",genome(txdb)[1])))
-    mt <- gregexpr(pattern=" \\([A-Za-z0-9]+\\) ", ahres$title)
-    ahresdates <- substr(ahres$title, unlist(mt)+2,
-                            unlist(mt)+vapply(mt, attr, "match.length",
-                                            FUN.VALUE = integer(1L)) - 3)
-    ahresdates <- as.Date(paste0("1", ahresdates), "%d%b%Y")
-    ## in case > 1 RM annotations available, pick the most recent one
-    suppressMessages(rmskdb <- ahres[[which.max(ahresdates)]])
-    names(rmskdb) <- mcols(rmskdb) <- NULL
+    rmskdb <- NULL
+    if (length(ahres) > 0) {
+        mt <- gregexpr(pattern=" \\([A-Za-z0-9]+\\) ", ahres$title)
+        ahresdates <- substr(ahres$title, unlist(mt)+2,
+                                unlist(mt)+vapply(mt, attr, "match.length",
+                                                  FUN.VALUE = integer(1L)) - 3)
+        ahresdates <- as.Date(paste0("1", ahresdates), "%d%b%Y")
+        ## in case > 1 RM annotations available, pick the most recent one
+        suppressMessages(rmskdb <- ahres[[which.max(ahresdates)]])
+        names(rmskdb) <- mcols(rmskdb) <- NULL
+    }
     return(rmskdb)
 }
 

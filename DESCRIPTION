@@ -45,6 +45,7 @@ Suggests:
     gDNAinRNAseqData
 biocViews: Transcription, Transcriptomics, RNASeq, Sequencing, Preprocessing, Software, GeneExpression, Coverage, DifferentialExpression, FunctionalGenomics, SplicedAlignment, Alignment
 VignetteBuilder: knitr
+Roxygen: list(markdown=TRUE)
 RoxygenNote: 7.3.2
 URL: https://github.com/functionalgenomics/gDNAx
 BugReports: https://github.com/functionalgenomics/gDNAx/issues

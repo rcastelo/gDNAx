@@ -61,8 +61,9 @@ strnessByFeature(
 )
 }
 \arguments{
-\item{bfl}{A \code{BamFile} or \code{BamFileList} object, or a character
-string vector of BAM filenames.}
+\item{bfl}{A \code{\link[Rsamtools:BamFile-class]{BamFile}} or
+\code{\link[Rsamtools:BamFile-class]{BamFileList}} object, or a character string vector
+of BAM filenames.}
 
 \item{txdb}{A character string of a \code{TxDb} package, or a \code{TxDb}
 object, with gene and transcript annotations. For accurate calculations, it
@@ -92,13 +93,14 @@ is smaller than the one given through this parameter.}
 \item{verbose}{(Default TRUE) Logical value indicating if progress should be
 reported through the execution of the code.}
 
-\item{BPPARAM}{An object of a \linkS4class{BiocParallelParam} subclass
+\item{BPPARAM}{An object of a
+\code{\link[BiocParallel:BiocParallelParam-class]{BiocParallelParam}} subclass
 to configure the parallel execution of the code. By default, a
-\linkS4class{SerialParam} object is used, which does not use any
-parallelization, with the flag \code{progress=TRUE} to show progress
-through the calculations.}
+\code{\link[BiocParallel:SerialParam-class]{SerialParam}} object is used, which does
+not use any parallelization, with the flag \code{progress=TRUE} to show
+progress through the calculations.}
 
-\item{x}{A \linkS4class{BamFileList} object.}
+\item{x}{A \code{\link[Rsamtools:BamFile-class]{BamFileList}} object.}
 
 \item{strnessdat}{A \code{data.frame} object obtained with the function
 \code{\link{strandedness}()}.}
@@ -136,40 +138,41 @@ in the strandedness value computation.}
 
 \item{p}{(Default 0.6) Numeric value for the exact binomial test performed
 for the strandedness value of each feature, representing the hypothesized
-probability of success (i.e. the strandedness value expected for a 
+probability of success (i.e. the strandedness value expected for a
 non-stranded dataset).}
 }
 \value{
 A \link[base:list]{list} object with two elements:
 \itemize{
-  \item "strandMode": the \code{strandMode} of the sample(s) following
-        \code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
-        class definition. If all samples have the same \code{strandMode},
-        the length of the vector is 1. It can take values: \code{NA}
-        (library is not strand-specific), 1 (strand of pair is strand of 
-        its first alignment), 2 (strand of pair is strand of its second 
-        alignment) or "ambiguous" (additional category used here for 
-        samples not fitting any of the three previous categories).
-        See "Details" section below to know the classification criteria,
-        as well as to how interpret results for single-end data.
-  \item "Strandedness": data.frame with one row per sample and 3 columns.
-        "strandMode1": proportion of alignments aligned to the same
-        strand than a transcript according
-        to the strand of its first alignment. "strandMode2": proportion
-        of alignments aligned to the same strand than a transcript according
-        to the strand of its second alignment. "ambiguous": alignments
-        aligned to regions with transcripts in both strands.
+\item "strandMode": the \code{strandMode} of the sample(s) following
+\code{\link[GenomicAlignments:GAlignmentPairs-class]{GAlignmentPairs}}
+class definition. If all samples have the same \code{strandMode},
+the length of the vector is 1. It can take values: \code{NA}
+(library is not strand-specific), 1 (strand of pair is strand of
+its first alignment), 2 (strand of pair is strand of its second
+alignment) or "ambiguous" (additional category used here for
+samples not fitting any of the three previous categories).
+See "Details" section below to know the classification criteria,
+as well as to how interpret results for single-end data.
+\item "Strandedness": data.frame with one row per sample and 3 columns.
+"strandMode1": proportion of alignments aligned to the same
+strand than a transcript according
+to the strand of its first alignment. "strandMode2": proportion
+of alignments aligned to the same strand than a transcript according
+to the strand of its second alignment. "ambiguous": alignments
+aligned to regions with transcripts in both strands.
 }
 
 A vector of integer values, \code{NA}, \code{1}, or \code{2},
 
-A \linkS4class{SummarizedExperiment} with three assays:
+A \code{\link[SummarizedExperiment:SummarizedExperiment-class]{SummarizedExperiment}}
+with three assays:
 \itemize{
-  \item "strness": contains strandedness values for each feature and sample.
-  \item "counts": number of reads aligning to each feature on the same 
-         strand (according to \code{strandMode}).
-  \item "counts_invstrand": number of reads aligning to each feature but on 
-         the opposite strand (according to \code{strandMode}).
+\item "strness": contains strandedness values for each feature and sample.
+\item "counts": number of reads aligning to each feature on the same
+strand (according to \code{strandMode}).
+\item "counts_invstrand": number of reads aligning to each feature but on
+the opposite strand (according to \code{strandMode}).
 }
 }
 \description{
@@ -190,20 +193,19 @@ Identify \code{strandMode} (strandedness) in RNA-seq data samples based on
 the proportion of reads aligning to the same or opposite strand as
 transcripts in the annotations.
 
-
 If the value in the "strandMode1" column is > 0.90, \code{strandMode} is set
 to 1L. If "strandMode2" column is > 0.90, \code{strandMode} is set to 2L. If
 "strandMode1" and "strandMode2" are comprised between 0.40 and 0.60,
 \code{strandMode} is set to \code{NA} If none of the three previous criteria
 are met, \code{strandMode} is set to "ambiguous". This criteria can be
-conservative in some cases (e.g. when there is genomic DNA contamination), 
-for this reason we recommend to check the data.frame with strandedness 
+conservative in some cases (e.g. when there is genomic DNA contamination),
+for this reason we recommend to check the data.frame with strandedness
 values.
- 
+
 In case of single-end data, the same criteria are used, but the
 interpretation of \code{strandMode = 1L} and \code{strandMode = 2L}
 changes: when \code{strandMode = 1L} the strand of the read is concordant
-with the reference annotations, when \code{strandMode = 2L} the correct 
+with the reference annotations, when \code{strandMode = 2L} the correct
 read strand is the opposite to the one of the read.
 
 A subset of 200,000 alignments overlapping gene annotations are used to
@@ -211,7 +213,7 @@ compute strandedness.
 
 Strandedness is computed for each feature and BAM file according to the
 \code{strandMode} specified in case of paired-end data. For single-end,
-the original strand of reads is used. All alignments from the BAM file(s) 
+the original strand of reads is used. All alignments from the BAM file(s)
 are considered to compute the strandedness.
 
 The \code{p} value should be close to 0.5, representing the strandedness
