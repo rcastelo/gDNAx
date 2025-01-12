@@ -1,7 +1,7 @@
 Package: gDNAx
 Type: Package
 Title: Diagnostics for assessing genomic DNA contamination in RNA-seq data
-Version: 1.4.0
+Version: 1.4.1
 Authors@R: c(
   person("Beatriz", "Calvo-Serra", email = "beatriz.calvo@upf.edu", role = c("aut")),
   person("Robert", "Castelo", email = "robert.castelo@upf.edu", role = c("aut", "cre")))
