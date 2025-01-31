@@ -31,7 +31,7 @@ the [remotes](https://cran.r-project.org/package=remotes) package, as follows:
 ```
 library(remotes)
 
-install_github("functionalgenomics/gDNAx")
+install_github("rcastelo/gDNAx")
 ```
 
 Provided that you have installed first all its Bioconductor dependencies;
@@ -48,7 +48,7 @@ at the top-left of this page.
 Contributions to the software codebase of gDNAx are welcome as long as contributors
 abide to the terms of the 
 [Bioconductor Contributor Code of Conduct](https://bioconductor.org/about/code-of-conduct).
-If you want to contribute to the development of GenomicScores please open an
+If you want to contribute to the development of gDNAx please open an
 [issue](https://github.com/functionalgenomics/gDNAx/issues) to start discussing
 your suggestion or, in case of a bugfix or a straightforward feature, directly a
 [pull request](https://github.com/functionalgenomics/gDNAx/pulls).
