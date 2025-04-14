@@ -169,7 +169,7 @@ dx
 ```
 
 The column `JNC` contains the percentage of alignments that include one or more
-junctions, irrespective of whether those aligments are compatible with an
+junctions, irrespective of whether those alignments are compatible with an
 spliced transcript in the given annotation. The columns with the suffix `FLM`
 contain an estimation of the fragment length mean in the alignments originating
 in the corresponding region, and the column `STRAND` stores the strandedness
@@ -190,11 +190,13 @@ contamination per sample.
 ```{r alnorigins, height=4, width=8, out.width="800px", fig.cap="Alignment origins."}
 plotAlnOrigins(gdnax, group=pdat$gDNA)
 ```
-
-If we are interested in knowing exactly which annotations of intergenic and
-intronic regions have been used to compute these diagnostics, we can easily
-retrieve them using the functions `getIgc()` and `getInt()` on the output
-`gDNAx` object, respectively.
+In the previous plot, `OTH` indicates the percentage of read alignments that
+do not fall fully within any of the other categories (`SCJ`, `SCE`, `INT` and
+`IGC`), these may typically correspond to read alignments overlapping two of
+these previous categories. If we are interested in knowing exactly which
+annotations of intergenic and intronic regions have been used to compute these
+diagnostics, we can retrieve them using the functions `getIgc()` and `getInt()`
+on the output `gDNAx` object, respectively.
 
 ```{r}
 igcann <- getIgc(gdnax)

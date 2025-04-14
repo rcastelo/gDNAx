@@ -56,6 +56,33 @@ class for further detail.}
 object; see the help page of \code{\link{gDNAdx}()}.}
 }
 \value{
+\code{getDx()}: A \code{data.frame} object with the following
+columns:
+\itemize{
+\item \code{IGC}: percentage of read alignments fully contained in
+intergenic regions.
+\item \code{INT}: percentage of read alignments fully contained in
+intronic regions.
+\item \code{SCJ}: percentage of splice-compatible junction read
+alignments. These are alignments compatible with a transcript
+in the given annotation, for which the aligned read, or at
+least one of the two aligned reads in the case of a paired-end
+layout, spans one or more exon-exon junctions over two or more
+exons of that transcript.
+\item \code{SCE}: percentage of splice compatible exonic alignments.
+These are alignments compatible with a transcript in the given
+annotation, but which differently to SCJ alignments, do not
+include an exon-exon junction in the alignment.
+\item \code{JNC}: percentage of alignments that include one or more
+junctions, irrespective of whether those alignments are compatible
+with an spliced transcript in the given annotation.
+\item \code{*FLM}: estimation of the fragment length mean in the
+alignments of the corresponding type (\code{IGC}, \code{SCJ}, or
+\code{SCE}).
+\item \code{STRAND}: strandedness values, with \code{NA} in the case
+that the data is unstranded.
+}
+
 \code{getIgc()}: A \code{GRanges} object with intergenic ranges.
 
 \code{getInt()}: A \code{GRanges} object with intron ranges.

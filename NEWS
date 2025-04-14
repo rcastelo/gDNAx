@@ -1,5 +1,14 @@
+CHANGES IN VERSION 1.6.0 (2025-04-14)
+-------------------------------------
+
+USER VISIBLE CHANGES
+
+    o Handling of metadata from non-model organisms has been improved. Thanks to discussions on the support site (https://support.bioconductor.org/p/9160897/) and GitHub (https://github.com/rcastelo/gDNAx/issues/5).
+
+    o Added more documentation to the output of the 'getDx()' method.
+
 CHANGES IN VERSION 1.2.0 (2024-04-27)
----------------------------------------
+-------------------------------------
 
 USER VISIBLE CHANGES
 
@@ -22,7 +31,7 @@ BUG FIXES
     o Bug fix when the genome() getter on GAlignment* objects is not NA.
 
 CHANGES IN VERSION 0.99.6 (2023-05-26)
----------------------------------------
+--------------------------------------
 
 USER VISIBLE CHANGES
 
