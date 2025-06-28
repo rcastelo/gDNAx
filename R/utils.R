@@ -296,9 +296,9 @@
 
 ## private function .matchSeqinfo()
 
+#' @importFrom Seqinfo seqlengths seqinfo seqinfo<- seqlevels genome genome<-
 #' @importFrom GenomeInfoDb seqlengths keepSeqlevels seqlevelsStyle
-#' @importFrom GenomeInfoDb seqlevelsStyle<- seqinfo seqinfo<- seqlevels
-#' @importFrom GenomeInfoDb genome genome<-
+#' @importFrom GenomeInfoDb seqlevelsStyle<-
 .matchSeqinfo <- function(gal, tx, verbose=TRUE) {
     stopifnot("GAlignments" %in% class(gal) ||
               "GAlignmentPairs" %in% class(gal) ||

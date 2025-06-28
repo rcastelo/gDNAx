@@ -29,8 +29,7 @@
 #' @param stdChrom (Default TRUE) Logical value indicating whether only
 #' alignments in the 'standard chromosomes' should be used. Consult the help
 #' page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-#' from the package \code{GenomeInfoDb} for further
-#' information.
+#' from the package \code{GenomeInfoDb} for further information.
 #'
 #' @param yieldSize (Default 1e5) Number of records to read from each input BAM
 #' file to calculate the diagnostics.
@@ -86,7 +85,8 @@
 #' @importFrom Rsamtools scanBamFlag ScanBamParam
 #' @importFrom AnnotationDbi select
 #' @importFrom GenomicFeatures exonsBy
-#' @importFrom GenomeInfoDb keepStandardChromosomes genome
+#' @importFrom Seqinfo genome
+#' @importFrom GenomeInfoDb keepStandardChromosomes
 #' @importFrom BiocParallel SerialParam bplapply bpnworkers bpprogressbar<-
 #' @importFrom methods new
 #' @importFrom cli cli_alert_info cli_progress_bar cli_progress_done
@@ -448,7 +448,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 ## private function .fetchIGCandINTrng()
 #' @importFrom IRanges reduce
 #' @importFrom GenomicFeatures exonsBy
-#' @importFrom GenomeInfoDb keepStandardChromosomes genome
+#' @importFrom Seqinfo genome
+#' @importFrom GenomeInfoDb keepStandardChromosomes
 #' @importFrom GenomicRanges GRanges strand strand<- gaps intersect width
 #' @importFrom GenomicRanges setdiff
 .fetchIGCandINTrng <- function(txdb, maxfrglen, ssInAnnot, stdChrom, strandMode,
@@ -526,7 +527,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 
 ## private function .fetchRmsk()
 #' @importFrom AnnotationHub AnnotationHub query
-#' @importFrom GenomeInfoDb genome
+#' @importFrom Seqinfo genome
 #' @importFrom cli cli_alert_info
 .fetchRmsk <- function(txdb, ssInAnnot, verbose) {
     

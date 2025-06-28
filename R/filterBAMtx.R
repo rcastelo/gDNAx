@@ -217,7 +217,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 #' @importFrom Rsamtools bamWhat bamTag
 #' @importFrom S4Vectors DataFrame mcols mcols<-
-#' @importFrom GenomeInfoDb seqlengths
+#' @importFrom Seqinfo seqlengths
 #' @importFrom GenomicAlignments GAlignments njunc first
 .bamtx_filter <- function(x) {
 
@@ -299,7 +299,7 @@ filterBAMtx <- function(object, path=".", txflag=filterBAMtxFlag(),
 
 ## private function .getSeqlen()
 #' @importFrom BiocGenerics path
-#' @importFrom GenomeInfoDb seqlengths
+#' @importFrom Seqinfo seqlengths
 .getSeqlen <- function(bf, x) {
     seqlengths <- seqlengths(bf)
     if (!is.null(seqlengths)) {

@@ -54,8 +54,7 @@ the BAM files.}
 \item{stdChrom}{(Default TRUE) Logical value indicating whether only
 alignments in the 'standard chromosomes' should be used. Consult the help
 page of the function \code{\link[GenomeInfoDb]{keepStandardChromosomes}}
-from the package \code{GenomeInfoDb} for further
-information.}
+from the package \code{GenomeInfoDb} for further information.}
 
 \item{yieldSize}{(Default 1e5) Number of records to read from each input BAM
 file to calculate the diagnostics.}
