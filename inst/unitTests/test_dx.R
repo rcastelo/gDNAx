@@ -55,9 +55,9 @@ test_readLengths <- function() {
 
 test_gDNAdx <- function() {
 
-    gdnax <- gDNAdx(bamfiles[1:2], txdb, verbose=FALSE)
+    gdnax <- gDNAdx(bamfiles[1:2], txdb, yieldSize=10000, useRMSK=FALSE, verbose=TRUE)
 
-    checkEquals(unname(rowSums(strandedness(gdnax)[, 1:3])), c(1L, 1L))
+    checkEquals(unname(rowSums(strandedness(gdnax)[, 1:2])), c(1L, 1L))
 
     checkEquals(strandMode(gdnax), as.integer(NA))
 

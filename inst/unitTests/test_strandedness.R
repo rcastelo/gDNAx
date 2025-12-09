@@ -40,16 +40,17 @@ test_output_strandedness <- function() {
     # Retrieving BAM files
     # bamfiles <- LiYu22subsetBAMfiles()
     
-    suppressWarnings(strness <- strandedness(bamfiles[1:2], txdb, singleEnd=FALSE))
+    seqlevels(txdb) <- "chr1"
+    strness <- strandedness(bamfiles[1:2], txdb, singleEnd=FALSE)
     
     checkTrue(is(strness, "data.frame"))
     
-    # All % and frag length values should be numeric and between 0 and 1
+    # values in the first three columns should be numeric and between 0 and 1
     checkTrue(is(unlist(strness[, 1:3]), "numeric"))
     checkTrue(all(unlist(strness[, 1:3]) >= 0 & unlist(strness[, 1:3]) <= 1))
     
-    # strandMode1 + strandMode2 + ambig should add 1
-    checkEquals(as.vector(rowSums(strness[, 1:3])),
+    # strandMode1 + strandMode2 should add 1
+    checkEquals(as.vector(rowSums(strness[, 1:2])),
                 rep(1, length(bamfiles[1:2])), tolerance = 1.0e-3)
 }
 
@@ -69,5 +70,11 @@ test_classifyStrandMode <- function() {
     strbysm <- data.frame("strandMode1" = 0.91, "strandMode2" = 0.08,
                           "ambig" = 0.01)
     checkIdentical(as.integer(classifyStrandMode(strbysm)), 1L)
-    
+}
+
+test_strnessByFeature <- function() {
+    seqlevels(txdb) <- "chr1"
+    annot <- exonsBy(txdb, by="gene")
+    sbyf <- strnessByFeature(bamfiles[1:2], annot, singleEnd=FALSE, strandMode=1L,
+			     yieldSize=10000, verbose=FALSE)
 }
