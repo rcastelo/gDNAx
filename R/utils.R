@@ -403,7 +403,7 @@
     }
     if (!missing(stdChrom)) {
         if (!is.logical(stdChrom) || length(stdChrom) != 1)
-            stop("'stdChrom' must be a logical value")
+            stop("'stdChrom' must be a single logical value")
     }
 }
 

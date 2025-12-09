@@ -211,6 +211,7 @@ setMethod("strandedness", "BamFileList",
     sbflags <- scanBamFlag(isUnmappedQuery=FALSE,
                            isProperPair=!singleEnd,
                            isSecondaryAlignment=FALSE,
+                           isDuplicate=FALSE,
                            isNotPassingQualityControls=FALSE)
     param <- ScanBamParam(flag=sbflags)
 
@@ -221,6 +222,7 @@ setMethod("strandedness", "BamFileList",
                             minnaln=minnaln, ssInAnnot=ssInAnnot,
                             verbose=verbose, BPPARAM=BPPARAM)
     } else {
+        idpb <- NULL
         if (verbose)
             idpb <- cli_progress_bar("Estimating strandedness", total=length(bfl))
         strbysm <- lapply(bfl, .strness_oneBAM, tx=annot, stdChrom=stdChrom,
@@ -248,9 +250,9 @@ setMethod("strandedness", "BamFileList",
     if (isOpen(bf))
         close(bf)
     
-    yieldSize <- yieldSize(bf)
+    origYieldSize <- yieldSize(bf)
     yieldSize(bf) <- minnaln+50000
-    on.exit(yieldSize(bf) <- yieldSize)
+    on.exit(yieldSize(bf) <- origYieldSize)
     on.exit(close(bf), add=TRUE)
     bf <- open(bf)
     
@@ -276,22 +278,42 @@ setMethod("strandedness", "BamFileList",
         
         if (ssInAnnot)
             gal <- .matchSeqinfo(gal, tx, verbose)
-        nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE, verbose)
+        nalnbf <- .getStrandedness(gal, tx, reportAll=TRUE, verbose=FALSE)
+
         nalnbystr <- nalnbf + nalnbystr
+
+        ## cat(sprintf("naln: %d minnaln: %d nalnst: %d nalnisst: %d ambig: %d Naln: %d\n",
+        ##             naln, minnaln, nalnbystr["nalnst"], nalnbystr["nalnisst"],
+        ##             nalnbystr["ambig"], nalnbystr["Nalignments"]))
+
         naln <- nalnbystr["Nalignments"]
         i <- i + 1
     }
 
+    ## cat("nalnbystr:\n")
+    ## print(nalnbystr)
+
+    ambig <- nalnbystr["ambig"] / nalnbystr["Nalignments"]
+    if (ambig > 0.10 && verbose) {
+        wstr <- paste(sprintf("%s:", basename(path(bf))),
+                      "> 10%% of alignments (%.1f%%) mapping to regions with",
+                      "transcripts annotated to both strands")
+        cli_alert_warning(sprintf(wstr, 100*ambig))
+    }
+    
+
     ## strandedness value (according to strandMode specified)
-    strness <- nalnbystr["nalnst"] / naln
+    ## ignoring proportion of ambiguous alignments
+
+    strness1 <- nalnbystr["nalnst"] / (nalnbystr["nalnst"] + nalnbystr["nalnisst"])
     
     ## strandedness value (opposite to strandMode specified)
-    strnessis <- nalnbystr["nalnisst"] / naln
+    strness2 <- nalnbystr["nalnisst"] / (nalnbystr["nalnst"] + nalnbystr["nalnisst"])
     
     ## proportion of alignments considered ambiguous
-    strnessambig <- nalnbystr["ambig"] / naln
+    ambig <- nalnbystr["ambig"] / naln
     
-    strbysm <- c(strness, strnessis, strnessambig, naln)
+    strbysm <- c(strness1, strness2, ambig, naln)
     names(strbysm) <- c("strandMode1", "strandMode2", "ambig", "Nalignments")
 
     if (verbose)
@@ -342,6 +364,9 @@ setMethod("strandedness", "BamFileList",
         cli_alert_warning(sprintf(wstr, 100*ambig))
     }
     
+    ## cat(sprintf("  nalnst: %d nalnisst: %d ambig: %d Naln: %d\n",
+    ##              nalnst, nalnisst, length(ambaln), nalnst+nalnisst+length(ambaln)))
+
     if (reportAll) {
         naln <- nalnst + nalnisst + length(ambaln)
         c(nalnst=nalnst, nalnisst=nalnisst, ambig=length(ambaln),
