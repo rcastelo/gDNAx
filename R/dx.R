@@ -46,7 +46,7 @@
 #' is smaller than the one given through this parameter. This parameter only
 #' applies if no argument is given for the \code{strandMode} parameter.
 #'
-#' @param useRMSK (Default TRUE) Logical value indicating if RepeatMasker
+#' @param useRMSK (Default FALSE) Logical value indicating if RepeatMasker
 #' annotations should be used when building intergenic and intronic genomic
 #' ranges for gDNA estimation. If \code{useRMSK=TRUE}, then UCSC RepeatMasker
 #' annotations will be downloaded as \code{\link[AnnotationHub]{AnnotationHub}}
@@ -95,7 +95,7 @@
 #' @rdname gDNAdx
 gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
                    yieldSize=100000L, exonsBy=c("gene", "tx"), minnaln=200000,
-                   useRMSK=TRUE, verbose=TRUE,
+                   useRMSK=FALSE, verbose=TRUE,
                    BPPARAM=SerialParam(progressbar=verbose)) {
     exonsBy <- match.arg(exonsBy)
 

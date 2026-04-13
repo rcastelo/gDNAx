@@ -16,7 +16,7 @@ gDNAdx(
   yieldSize = 100000L,
   exonsBy = c("gene", "tx"),
   minnaln = 2e+05,
-  useRMSK = TRUE,
+  useRMSK = FALSE,
   verbose = TRUE,
   BPPARAM = SerialParam(progressbar = verbose)
 )
@@ -71,7 +71,7 @@ values. A warning message is given if the number of such available alignments
 is smaller than the one given through this parameter. This parameter only
 applies if no argument is given for the \code{strandMode} parameter.}
 
-\item{useRMSK}{(Default TRUE) Logical value indicating if RepeatMasker
+\item{useRMSK}{(Default FALSE) Logical value indicating if RepeatMasker
 annotations should be used when building intergenic and intronic genomic
 ranges for gDNA estimation. If \code{useRMSK=TRUE}, then UCSC RepeatMasker
 annotations will be downloaded as \code{\link[AnnotationHub]{AnnotationHub}}
