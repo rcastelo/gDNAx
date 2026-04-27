@@ -1,3 +1,14 @@
+CHANGES IN VERSION 1.10.0 (2026-04-27)
+--------------------------------------
+
+USER VISIBLE CHANGES
+
+    o Changed default useRMSK=TRUE to useRMSK=FALSE in gDNAdx().
+
+BUG FIXES
+
+    o Fix in the calculations of the strandedness() function, and its corresponding unit tests.
+
 CHANGES IN VERSION 1.6.0 (2025-04-14)
 -------------------------------------
 
