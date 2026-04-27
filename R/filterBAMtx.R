@@ -445,7 +445,12 @@ filterBAMtxFlag <- function(isSpliceCompatibleJunction=FALSE,
                             isIntergenic=FALSE) {
     flag <- S4Vectors:::makePowersOfTwo(length(TXFLAG_BITNAMES))
     names(flag) <- TXFLAG_BITNAMES
-    args <- lapply(as.list(match.call())[-1], eval, parent.frame())
+    ## args <- lapply(as.list(match.call())[-1], eval, parent.frame())
+    args <- list(isSpliceCompatibleJunction=isSpliceCompatibleJunction,
+                 isSpliceCompatibleExonic=isSpliceCompatibleExonic,
+                 isInStrandedWindow=isInStrandedWindow,
+                 isIntronic=isIntronic,
+                 isIntergenic=isIntergenic)
     if (any(vapply(args, length, FUN.VALUE = integer(1L)) > 1L))               
         stop("all arguments must be logical(1)")
 

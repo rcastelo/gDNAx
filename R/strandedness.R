@@ -170,8 +170,8 @@ setMethod("strandedness", "BamFileList",
                   if (stdChrom) {
                       cli_alert_warning("Cannot figure out the sequence style for the")
                       cli_alert_warning("species metadata on the input annotations")
-                      cli_alert_warning(sprintf("(%s). Setting 'stdChrom=FALSE'.",
-                                                species(txdb)))
+                      fmtstr <- "(%s). Setting 'stdChrom=FALSE'"
+                      cli_alert_warning("{sprintf(strfmt, species(txdb))}")
                       stdChrom <- FALSE
                   }
               }
@@ -298,7 +298,7 @@ setMethod("strandedness", "BamFileList",
         wstr <- paste(sprintf("%s:", basename(path(bf))),
                       "> 10%% of alignments (%.1f%%) mapping to regions with",
                       "transcripts annotated to both strands")
-        cli_alert_warning(sprintf(wstr, 100*ambig))
+        cli_alert_warning("{sprintf(wstr, 100*ambig)}")
     }
     
 
@@ -361,7 +361,7 @@ setMethod("strandedness", "BamFileList",
     if (ambig > 0.10 && verbose) {
         wstr <- paste("> 10%% of alignments (%.1f%%) mapping to regions with",
                       "transcripts annotated to both strands")
-        cli_alert_warning(sprintf(wstr, 100*ambig))
+        cli_alert_warning("{sprintf(wstr, 100*ambig)}")
     }
     
     ## cat(sprintf("  nalnst: %d nalnisst: %d ambig: %d Naln: %d\n",

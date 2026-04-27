@@ -117,7 +117,7 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         if (stdChrom) {
           cli_alert_warning("Cannot figure out the sequence style for the")
           fmtstr <- "species metadata on the input annotations (%s)."
-          cli_alert_warning(sprintf(fmtstr, species(txdb)))
+          cli_alert_warning("{sprintf(fmtstr, species(txdb))}")
           cli_alert_warning("Setting 'stdChrom=FALSE'.")
           stdChrom <- FALSE
         }
@@ -161,9 +161,11 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
 
     igcintrng <- .fetchIGCandINTrng(txdb, maxfrglen, suppSpeciesInAnnot,
                                     stdChrom, strandMode, useRMSK, verbose)
-    if (verbose)
-        cli_alert_info(sprintf("Fetching transcript-level annotations for %s",
-                               genome(txdb)[1]))
+    if (verbose) {
+        fmtstr <- "Fetching transcript-level annotations for %s"
+        cli_alert_info("{sprintf(fmtstr, genome(txdb)[1])}")
+    }
+
     exbytx <- exonsBy(txdb, by="tx") ## fetch transcript annotations
     if (suppSpeciesInAnnot && stdChrom) {
         exbytx <- keepStandardChromosomes(exbytx, pruning.mode="fine")
@@ -458,9 +460,10 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
     ## them into genomic coordinates. use exonsBy() instead of genes() to
     ## catch annotations of genes mapping to multiple sequences and including
     ## exons on different strands.
-    if (verbose)
-        cli_alert_info(sprintf("Fetching gene-level annotations for %s",
-                               genome(txdb)[1]))
+    if (verbose) {
+        fmtstr <- "Fetching gene-level annotations for %s"
+        cli_alert_info("{sprintf(fmtstr, genome(txdb)[1])}")
+    }
     exbygn <- exonsBy(txdb, by="gene")
     if (ssInAnnot && stdChrom) ## important to use 'pruning.mode="fine"' here
         exbygn <- keepStandardChromosomes(exbygn, pruning.mode="fine")
@@ -476,8 +479,8 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         ## fetch ranges of RepeatMasker annot. and project them into genomic coord.
         rmskdb <- .fetchRmsk(txdb, ssInAnnot, verbose)
         if (is.null(rmskdb)) {
-            fmtstr <- "Could not fetch UCSC RepeatMasker annotations for %s."
-            cli_alert_warning(sprintf(fmtstr, genome(txdb)[1]))
+            fmtstr <- "Could not fetch UCSC RepeatMasker annotations for %s"
+            cli_alert_warning("{sprintf(fmtstr, genome(txdb)[1])}")
             cli_alert_warning("Setting 'useRMSK=FALSE'.")
             useRMSK <- FALSE
         }
@@ -542,9 +545,11 @@ gDNAdx <- function(bfl, txdb, singleEnd, strandMode, stdChrom=TRUE,
         }
     }
 
-    if (verbose)
-        cli_alert_info(sprintf("Fetching UCSC RepeatMasker annotations for %s",
-                               genome(txdb)[1]))
+    if (verbose) {
+        fmtstr <- "Fetching UCSC RepeatMasker annotations for %s"
+        cli_alert_info("{sprintf(fmtstr, genome(txdb)[1])}")
+    }
+
     suppressMessages(ah <- AnnotationHub())
     suppressMessages(ahres <- query(ah, c("UCSCRepeatMasker",genome(txdb)[1])))
     rmskdb <- NULL
@@ -803,7 +808,8 @@ plotFrgLength <- function(x) {
     lines(scjden, lwd=2, col="darkgreen")
     lines(sceden, lwd=2, col="darkolivegreen")
     ticks <- seq(xrng[1], xrng[2], by=1)
-    axis(1, at=ticks, labels=parse(text=paste0("10^", ticks)))
+    ## axis(1, at=ticks, labels=parse(text=paste0("10^", ticks)))
+    axis(1, at=ticks, labels=as.expression(lapply(ticks, function(t) bquote(10^.(t)))))
     legend("topright", c("IGC", "INT", "SCJ", "SCE"), lwd=2, inset=0.01,
             col=c("darkblue", "skyblue", "darkgreen", "darkolivegreen"))
     yrng <- range(log10(c(alligcfrglen, allintfrglen, allscjfrglen,
